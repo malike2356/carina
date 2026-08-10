@@ -8,6 +8,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Express, Request, Response } from 'express';
 import { getSessionTool } from '../../tools/session-tool-store.js';
 import { getWorkerSessionContext } from '../../workers/worker-session-context.js';
+import { invokeProductTool } from '../../workers/product-tools/invoke.js';
 
 type Ctx = {
   workspace_id: string;
@@ -22,6 +23,15 @@ type Ctx = {
 };
 
 const idempotentApplies = new Map<string, Record<string, unknown>>();
+
+const canonicalProductTools: Record<string, { slug: string; action: string }> = {
+  'gmail-list': { slug: 'gmail', action: 'list' },
+  'gmail-search': { slug: 'gmail', action: 'list' },
+  'gmail-get': { slug: 'gmail', action: 'get' },
+  'gmail-get-attachment': { slug: 'gmail', action: 'get-attachment' },
+  'gmail-send': { slug: 'gmail', action: 'send' },
+  'gmail-draft': { slug: 'gmail', action: 'draft' },
+};
 
 const trustedBodyKeys = new Set([
   'workspace_id', 'user_id', 'worker_id', 'conversation_id',
@@ -39,6 +49,16 @@ function modelToolArguments(body: unknown): Record<string, unknown> {
     Object.entries(body as Record<string, unknown>)
       .filter(([key]) => !trustedBodyKeys.has(key)),
   );
+}
+
+function canonicalProductInput(toolName: string, body: unknown): Record<string, unknown> {
+  const input = modelToolArguments(body);
+  if (toolName === 'gmail-list' || toolName === 'gmail-search') {
+    const limit = Number(input.limit ?? input.maxResults ?? 5);
+    input.maxResults = Math.min(100, Math.max(1, Number.isFinite(limit) ? limit : 5));
+    delete input.limit;
+  }
+  return input;
 }
 
 function sharedToken(): string {
@@ -114,6 +134,41 @@ export function mountKeprixProductApi(app: Express): void {
     if (!requireBootstrap(req, res)) return;
     const sessionId = String(req.params.sessionId ?? '').trim();
     const toolName = String(req.params.toolName ?? '').trim();
+
+    // Keprix runs as a separate service, so its callback cannot depend on the
+    // core process's in-memory worker session. Canonical product tools resolve
+    // the granted account from the trusted workspace and worker directly.
+    const canonical = canonicalProductTools[toolName];
+    if (canonical) {
+      const trustedWorkspace = String(req.headers['x-keprix-trusted-workspace-id'] ?? '').trim();
+      const trustedActor = String(req.headers['x-keprix-trusted-actor-id'] ?? '').trim();
+      const trustedConversation = String(req.headers['x-keprix-trusted-conversation-id'] ?? '').trim();
+      const trustedProduct = String(req.headers['x-keprix-trusted-product'] ?? '').trim().toLowerCase();
+      if (
+        !trustedWorkspace
+        || !trustedActor
+        || trustedConversation !== sessionId
+        || (trustedProduct !== 'aiva' && trustedProduct !== 'carina')
+      ) {
+        res.status(403).json({ error: 'trusted context mismatch', code: 'denied' });
+        return;
+      }
+      try {
+        const result = await invokeProductTool({
+          workspaceId: trustedWorkspace,
+          workerId: trustedActor,
+          slug: canonical.slug,
+          action: canonical.action,
+          input: canonicalProductInput(toolName, req.body),
+        });
+        res.status(result.ok ? 200 : 502).json(result);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        res.status(502).json({ ok: false, error: message, code: 'tool_failed' });
+      }
+      return;
+    }
+
     const context = getWorkerSessionContext(sessionId);
     const tool = getSessionTool(sessionId, toolName);
     if (!context || !tool) {

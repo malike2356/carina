@@ -4,11 +4,16 @@
 import assert from 'node:assert/strict';
 import express from 'express';
 import { createServer } from 'node:http';
-import { afterAll, beforeAll, describe, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { mountKeprixProductApi } from './keprix-product-api.js';
+import { invokeProductTool } from '../../workers/product-tools/invoke.js';
 import { clearSessionTools, registerSessionTool } from '../../tools/session-tool-store.js';
 import { clearWorkerSessionContext, setWorkerSessionContext } from '../../workers/worker-session-context.js';
 import type { WorkerContext } from '../../types/index.js';
+
+vi.mock('../../workers/product-tools/invoke.js', () => ({
+  invokeProductTool: vi.fn(),
+}));
 
 describe('keprix product API (CAS-03)', () => {
   const prev = process.env.CARINA_KEPRIX_SHARED_TOKEN;
@@ -123,6 +128,39 @@ describe('keprix product API (CAS-03)', () => {
     assert.equal(denied.status, 403);
     clearSessionTools(sessionId);
     clearWorkerSessionContext(sessionId);
+  });
+
+  it('executes canonical Gmail tools without an in-memory session', async () => {
+    vi.mocked(invokeProductTool).mockResolvedValueOnce({
+      ok: true,
+      data: { messages: [] },
+    });
+    const sessionId = 'telegram:stateless-gmail-session';
+    const headers = {
+      Authorization: 'Bearer test-shared',
+      'Content-Type': 'application/json',
+      'X-Keprix-Trusted-Workspace-Id': 'workspace-1',
+      'X-Keprix-Trusted-Actor-Id': 'worker-1',
+      'X-Keprix-Trusted-Conversation-Id': sessionId,
+      'X-Keprix-Trusted-Product': 'aiva',
+    };
+    const response = await fetch(
+      `${base}/api/keprix/v1/tools/${encodeURIComponent(sessionId)}/gmail-list`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ limit: 3, q: 'in:anywhere', workspace_id: 'attacker' }),
+      },
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true, data: { messages: [] } });
+    expect(invokeProductTool).toHaveBeenCalledWith({
+      workspaceId: 'workspace-1',
+      workerId: 'worker-1',
+      slug: 'gmail',
+      action: 'list',
+      input: { q: 'in:anywhere', maxResults: 3 },
+    });
   });
 
   it('does not execute guarded tools through the sidecar callback', async () => {
