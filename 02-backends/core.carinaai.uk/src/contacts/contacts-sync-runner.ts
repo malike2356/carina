@@ -106,11 +106,24 @@ export async function sweepDueContactsSyncSchedules(): Promise<{
 }
 
 export async function getScheduleStatus(workspaceId: string): Promise<
-  ContactsSyncSchedule & { configured: boolean }
+  ContactsSyncSchedule & { configured: boolean; configuredReason?: string }
 > {
+  const { credentialsConfigured } = await import('../channels/credential-store.js');
+  if (!credentialsConfigured()) {
+    const schedule = await getContactsSyncSchedule(workspaceId);
+    return {
+      ...schedule,
+      configured: false,
+      configuredReason: 'credential_key_missing',
+    };
+  }
   const [schedule, configured] = await Promise.all([
     getContactsSyncSchedule(workspaceId),
     workspaceHasGoogleAccount(workspaceId).catch(() => false),
   ]);
-  return { ...schedule, configured };
+  return {
+    ...schedule,
+    configured,
+    configuredReason: configured ? undefined : 'google_not_connected',
+  };
 }

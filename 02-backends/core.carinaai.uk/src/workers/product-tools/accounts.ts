@@ -242,8 +242,22 @@ export async function upsertConnectedToolAccount(input: {
       ? existingRow.meta
       : {};
     meta = mergeAccountMeta(existingMeta, input.meta);
-    if (!credentialsHaveSecret(credentials) && existingRow?.credentials_enc) {
-      credentials = decryptCredentials(String(existingRow.credentials_enc));
+    if (existingRow?.credentials_enc) {
+      try {
+        const existingCredentials = decryptCredentials(String(existingRow.credentials_enc));
+        if (!credentialsHaveSecret(credentials)) {
+          credentials = existingCredentials;
+        } else {
+          // Google often omits refresh_token on reconnect; keep the stored one.
+          for (const key of ['refresh_token', 'access_token'] as const) {
+            const next = credentials[key]?.trim();
+            const prev = existingCredentials[key]?.trim();
+            if (!next && prev) credentials[key] = prev;
+          }
+        }
+      } catch {
+        /* keep incoming credentials when stored blob cannot be decrypted */
+      }
     }
     await pool.query(
       `UPDATE aiva_tool_accounts SET
@@ -636,26 +650,32 @@ export async function getWorkspaceGoogleCredentials(
          WHEN 'google-drive' THEN 3
          ELSE 9
        END,
-       updated_at DESC
-     LIMIT 1`,
+       updated_at DESC`,
     [workspaceId, [...GOOGLE_TOKEN_TOOL_SLUGS]],
   );
-  if (result.rows.length === 0) return null;
-  const row = result.rows[0] as {
-    tool_slug: string;
-    credentials_enc: string;
-    meta?: Record<string, unknown>;
-  };
-  const credentials = decryptCredentials(String(row.credentials_enc));
-  if (row.meta && typeof row.meta === 'object') {
-    for (const [key, value] of Object.entries(row.meta)) {
-      if (typeof value === 'string' && value.trim() && !credentials[key]) {
-        credentials[key] = value.trim();
+  for (const raw of result.rows) {
+    const row = raw as {
+      tool_slug: string;
+      credentials_enc: string;
+      meta?: Record<string, unknown>;
+    };
+    let credentials: Record<string, string>;
+    try {
+      credentials = decryptCredentials(String(row.credentials_enc));
+    } catch {
+      continue;
+    }
+    if (row.meta && typeof row.meta === 'object') {
+      for (const [key, value] of Object.entries(row.meta)) {
+        if (typeof value === 'string' && value.trim() && !credentials[key]) {
+          credentials[key] = value.trim();
+        }
       }
     }
+    if (!credentials.refresh_token && !credentials.access_token) continue;
+    return { credentials, toolSlug: String(row.tool_slug) };
   }
-  if (!credentials.refresh_token && !credentials.access_token) return null;
-  return { credentials, toolSlug: String(row.tool_slug) };
+  return null;
 }
 
 export async function workspaceHasGoogleAccount(workspaceId: string): Promise<boolean> {

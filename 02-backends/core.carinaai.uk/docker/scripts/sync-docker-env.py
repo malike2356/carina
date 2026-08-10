@@ -38,6 +38,12 @@ CLOUD_PROXY_SECRET_CANDIDATES = [
     Path('/home/malike/apps/app.carinaai.uk/.env'),
 ]
 
+CHANNEL_CREDENTIAL_SECRET_CANDIDATES = [
+    Path('/home/malike/secrets/core.carinaai.uk.env'),
+    Path('/home/malike/secrets/app.carinaai.uk.env'),
+    ROOT / '.env',
+]
+
 DB_USER = os.environ.get('DB_USER', 'carina')
 DB_PASSWORD = os.environ.get('DB_PASSWORD', 'secret')
 PGBOUNCER_ENABLED = os.environ.get('PGBOUNCER_ENABLED', '1')
@@ -106,6 +112,18 @@ def cloud_proxy_pairing_values(current: dict[str, str]) -> dict[str, str]:
     return out
 
 
+def channel_credential_key_value(current: dict[str, str]) -> str | None:
+    """Fill blank CHANNEL_CREDENTIAL_KEY from Contabo secrets when missing."""
+    existing = current.get('CHANNEL_CREDENTIAL_KEY', '').strip().strip('"').strip("'")
+    if len(existing) == 64:
+        return None
+    for candidate in CHANNEL_CREDENTIAL_SECRET_CANDIDATES:
+        value = parse_env_file(candidate).get('CHANNEL_CREDENTIAL_KEY', '').strip().strip('"').strip("'")
+        if len(value) == 64:
+            return value
+    return None
+
+
 def main() -> None:
     if not ENV_PATH.exists():
         raise SystemExit(f'missing {ENV_PATH}; copy from .env first')
@@ -154,6 +172,13 @@ def main() -> None:
         seen.add(key)
         current[key] = value
 
+    channel_key = channel_credential_key_value(current)
+    if channel_key:
+        out = [line for line in out if not line.startswith('CHANNEL_CREDENTIAL_KEY=')]
+        out.append(f'CHANNEL_CREDENTIAL_KEY={channel_key}')
+        seen.add('CHANNEL_CREDENTIAL_KEY')
+        current['CHANNEL_CREDENTIAL_KEY'] = channel_key
+
     final_vals: dict[str, str] = {}
     for line in out:
         if '=' in line and not line.strip().startswith('#'):
@@ -163,6 +188,12 @@ def main() -> None:
         raise SystemExit(
             f'{ENV_PATH.name} is missing CARINA_OPS_TOKEN and CARINA_INTERNAL_KEY. '
             'Restore from /home/malike/secrets/app.carinaai.uk.env before deploying carina-web.'
+        )
+    channel_final = final_vals.get('CHANNEL_CREDENTIAL_KEY', '').strip().strip('"').strip("'")
+    if len(channel_final) != 64:
+        raise SystemExit(
+            f'{ENV_PATH.name} is missing CHANNEL_CREDENTIAL_KEY (32-byte hex). '
+            'Restore from /home/malike/secrets/core.carinaai.uk.env before deploying carina-web.'
         )
 
     ENV_PATH.write_text('\n'.join(out) + '\n')

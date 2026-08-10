@@ -106,7 +106,7 @@ export function renderProofPageHtml(
     ? `<section class="proof-section"><h2>Press</h2><ul>${model.press
         .map(
           (p) =>
-            `<li><a href="${escapeHtml(p.url)}" rel="noopener noreferrer" target="_blank">${escapeHtml(p.title)}</a> — ${escapeHtml(p.outlet)}${p.date ? ` (${escapeHtml(p.date)})` : ''}</li>`,
+            `<li><a href="${escapeHtml(p.url)}" rel="noopener noreferrer" target="_blank">${escapeHtml(p.title)}</a>; ${escapeHtml(p.outlet)}${p.date ? ` (${escapeHtml(p.date)})` : ''}</li>`,
         )
         .join('')}</ul></section>`
     : '';

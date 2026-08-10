@@ -110,6 +110,7 @@ type AutoSyncSchedule = {
   lastRunAt: string | null;
   lastResult: { ok?: boolean; imported?: number; error?: string; at?: string } | null;
   configured?: boolean;
+  configuredReason?: string;
 };
 
 export default function ContactsPage() {
@@ -206,6 +207,10 @@ export default function ContactsPage() {
           lastRunAt: scheduleData.lastRunAt ?? null,
           lastResult: scheduleData.lastResult ?? null,
           configured: Boolean(scheduleData.configured),
+          configuredReason:
+            typeof scheduleData.configuredReason === 'string'
+              ? scheduleData.configuredReason
+              : undefined,
         });
         if (typeof scheduleData.configured === 'boolean') {
           setGoogleConfigured(Boolean(scheduleData.configured));
@@ -520,11 +525,20 @@ export default function ContactsPage() {
 
       {googleConfigured === false ? (
         <div className={cn('border-b px-4 py-2 text-xs sm:px-6', warnTone.box, warnTone.textMuted)}>
-          Google Contacts is not connected.{' '}
-          <Link href="/aiva/tools?tool=google-contacts" className="underline underline-offset-2">
-            Connect in Tools
-          </Link>
-          , then resync.
+          {schedule?.configuredReason === 'credential_key_missing' ? (
+            <>
+              Google tokens cannot be read on this server (encryption key missing). Ask an operator to restore{' '}
+              <code className="text-[11px]">CHANNEL_CREDENTIAL_KEY</code>, then reconnect in Tools.
+            </>
+          ) : (
+            <>
+              Google Contacts is not connected.{' '}
+              <Link href="/aiva/tools?tool=google-contacts" className="underline underline-offset-2">
+                Connect in Tools
+              </Link>
+              , then resync.
+            </>
+          )}
         </div>
       ) : null}
 

@@ -126,10 +126,10 @@ aivaToolsOAuthRouter.post('/google/callback', async (req: OAuthRequest, res: Res
       redirectUri: parsed.redirectUri,
     });
 
-    const credentials = {
+    const credentials: Record<string, string> = {
       access_token: tokens.accessToken,
-      refresh_token: tokens.refreshToken,
-      email: tokens.email,
+      ...(tokens.email ? { email: tokens.email } : {}),
+      ...(tokens.refreshToken ? { refresh_token: tokens.refreshToken } : {}),
     };
 
     if (parsed.mode === 'account') {
