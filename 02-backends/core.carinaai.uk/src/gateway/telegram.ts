@@ -25,6 +25,7 @@ import { interceptSlashCommand } from './channels/slash-commands/interceptor.js'
 import { getTelegramChatPrefs } from './telegram-prefs.js';
 import { registerCarinaTelegramCommands } from './telegram-menu.js';
 import { deleteTelegramMessage } from '../channels/adapters/telegram-adapter.js';
+import { inboundTurnKey, runInboundTurnSerialized } from '../channels/chat-turn-queue.js';
 
 const TELEGRAM_MAX = 4096;
 const EDIT_INTERVAL_MS = 1000;
@@ -473,39 +474,48 @@ export async function startTelegram(): Promise<void> {
       }
     }
 
-    // Show typing immediately so the chat never looks idle while prefs/tools run.
-    const chatAction = startTelegramChatAction(bot, chatId, 'typing');
+    await runInboundTurnSerialized(
+      inboundTurnKey({
+        workerId: getActiveAgentDefinition().id,
+        channel: 'telegram',
+        conversationId: String(chatId),
+      }),
+      async () => {
+        // Show typing immediately so the chat never looks idle while prefs/tools run.
+        const chatAction = startTelegramChatAction(bot, chatId, 'typing');
 
-    try {
-      const prefs = await getTelegramChatPrefs(String(chatId)).catch(() => ({
-        preferVoiceReplies: false,
-        byokOwnerUserId: null,
-      }));
-      chatAction.nudge();
+        try {
+          const prefs = await getTelegramChatPrefs(String(chatId)).catch(() => ({
+            preferVoiceReplies: false,
+            byokOwnerUserId: null,
+          }));
+          chatAction.nudge();
 
-      const inboundMsg = speakRequested || prefs.preferVoiceReplies
-        ? {
-            ...msg,
-            text:
-              `${text || 'Give me a brief spoken summary.'}\n\n`
-              + '[Channel note: Telegram may deliver this reply as audio when voice is preferred. '
-              + 'Reply in plain text only; do not call text-to-speech.]',
+          const inboundMsg = speakRequested || prefs.preferVoiceReplies
+            ? {
+                ...msg,
+                text:
+                  `${text || 'Give me a brief spoken summary.'}\n\n`
+                  + '[Channel note: Telegram may deliver this reply as audio when voice is preferred. '
+                  + 'Reply in plain text only; do not call text-to-speech.]',
+              }
+            : msg;
+          const generator = getRouter().handleInbound('telegram', inboundMsg);
+          const fullReply = await streamToTelegram(bot, chatId, generator, adapter, chatAction);
+          await maybeSendVoiceReply(bot, chatId, rawText, fullReply, speakRequested, chatAction);
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          // Redis blips used to surface as a scary footer after a successful reply.
+          if (/connection is closed/i.test(errMsg)) {
+            console.warn('[telegram] suppressed closed-connection error after turn:', errMsg);
+            return;
           }
-        : msg;
-      const generator = getRouter().handleInbound('telegram', inboundMsg);
-      const fullReply = await streamToTelegram(bot, chatId, generator, adapter, chatAction);
-      await maybeSendVoiceReply(bot, chatId, rawText, fullReply, speakRequested, chatAction);
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      // Redis blips used to surface as a scary footer after a successful reply.
-      if (/connection is closed/i.test(errMsg)) {
-        console.warn('[telegram] suppressed closed-connection error after turn:', errMsg);
-        return;
-      }
-      await bot.sendMessage(chatId, `Error: ${errMsg}`);
-    } finally {
-      chatAction.stop();
-    }
+          await bot.sendMessage(chatId, `Error: ${errMsg}`);
+        } finally {
+          chatAction.stop();
+        }
+      },
+    );
   });
 
   console.log(chalk.green('Telegram gateway ready'));

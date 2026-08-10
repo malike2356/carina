@@ -8,6 +8,7 @@ import { isOutboundApprovalChannel } from './approval-gated-channels.js';
 import { handleSocialInboundReply } from '../ingestion/social/social-draft-handler.js';
 import { sendOutboundReply } from './outbound-reply.js';
 import type { SoftWallAction } from '../billing/usage-gate-policy.js';
+import { inboundTurnKey, runInboundTurnSerialized } from './chat-turn-queue.js';
 
 export { sendOutboundReply };
 
@@ -212,33 +213,41 @@ export async function handleParsedInbound(
   identifier: string,
   forcedEntry?: RegistryEntry,
 ): Promise<void> {
-  const result = await routeInboundMessage(message.channel, identifier, () => message, forcedEntry);
-  if (!result.handled || !result.response || !result.entry) return;
+  const key = inboundTurnKey({
+    workerId: message.workerId,
+    channel: message.channel,
+    conversationId: message.contactId,
+  });
 
-  if (isInternalQueueAck(result.response)) {
-    console.info(
-      `[channel-router] suppressed internal ack on ${message.channel}: ${result.response.slice(0, 80)}`,
-    );
-    return;
-  }
+  await runInboundTurnSerialized(key, async () => {
+    const result = await routeInboundMessage(message.channel, identifier, () => message, forcedEntry);
+    if (!result.handled || !result.response || !result.entry) return;
 
-  // Soft-wall / credit-exhausted notices must reach the user immediately.
-  const isSystemGateReply =
-    /managed AI credit/i.test(result.response)
-    || /connect your own API key/i.test(result.response)
-    || Boolean(result.actions?.length);
+    if (isInternalQueueAck(result.response)) {
+      console.info(
+        `[channel-router] suppressed internal ack on ${message.channel}: ${result.response.slice(0, 80)}`,
+      );
+      return;
+    }
 
-  if (isOutboundApprovalChannel(message.channel) && !isSystemGateReply) {
-    await handleSocialInboundReply({
-      message,
-      entry: result.entry,
-      draftText: result.response,
-    });
-    return;
-  }
+    // Soft-wall / credit-exhausted notices must reach the user immediately.
+    const isSystemGateReply =
+      /managed AI credit/i.test(result.response)
+      || /connect your own API key/i.test(result.response)
+      || Boolean(result.actions?.length);
 
-  await sendOutboundReply(message.channel, result.entry, message, result.response);
-  if (result.entry.channelRowId) {
-    void markChannelVerified(result.entry.channelRowId).catch(() => {});
-  }
+    if (isOutboundApprovalChannel(message.channel) && !isSystemGateReply) {
+      await handleSocialInboundReply({
+        message,
+        entry: result.entry,
+        draftText: result.response,
+      });
+      return;
+    }
+
+    await sendOutboundReply(message.channel, result.entry, message, result.response);
+    if (result.entry.channelRowId) {
+      void markChannelVerified(result.entry.channelRowId).catch(() => {});
+    }
+  });
 }
