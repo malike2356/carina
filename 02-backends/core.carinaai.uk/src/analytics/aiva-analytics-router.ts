@@ -374,6 +374,31 @@ aivaAnalyticsRouter.get('/events/unused', (req: AnalyticsRequest, res: Response)
   });
 });
 
+aivaAnalyticsRouter.get('/feature-health', async (req: AnalyticsRequest, res: Response) => {
+  try {
+    const { runCarinaFeatureHealthAudit } = await import('../feature-health/runtime.js');
+    const report = await runCarinaFeatureHealthAudit({
+      workspaceId: req.workspaceId ?? 'platform',
+    });
+    res.json({
+      ok: true,
+      summary: report.summary,
+      features: report.features,
+      gate: {
+        canBuildNewFeature: report.gate.allowed,
+        blocked: report.gate.blocked,
+        reason: report.gate.reason,
+        blockingIssues: report.gate.blockingIssues,
+        fixQueue: report.gate.fixQueue,
+        deprecate: report.gate.deprecate,
+      },
+      checkedAt: report.checkedAt,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 aivaAnalyticsRouter.get('/events/journey/:userId', (req: AnalyticsRequest, res: Response) => {
   void import('./events/index.js').then(({ getUserJourney }) => {
     const userId = routeParam(req.params.userId);

@@ -331,6 +331,54 @@ export function mountOpsRoutes(app: Express): void {
     res.json(hostedEmailOperatorStatus());
   });
 
+  app.get('/api/ops/feature-health', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const { runCarinaFeatureHealthAudit } = await import('../feature-health/runtime.js');
+      const baseUrl =
+        typeof req.query.baseUrl === 'string' && req.query.baseUrl.trim()
+          ? req.query.baseUrl.trim()
+          : process.env.CARINA_PUBLIC_BASE_URL || undefined;
+      const report = await runCarinaFeatureHealthAudit({
+        workspaceId: typeof req.query.workspaceId === 'string' ? req.query.workspaceId : 'platform',
+        baseUrl,
+        fetchFn: baseUrl
+          ? async (url) => {
+              const resFetch = await fetch(url, { method: 'GET', redirect: 'manual' });
+              return { status: resFetch.status, ok: resFetch.status >= 200 && resFetch.status < 400 };
+            }
+          : undefined,
+      });
+      res.json({ ok: true, ...report });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.get('/api/ops/feature-health/build-gate', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const { runCarinaFeatureHealthAudit } = await import('../feature-health/runtime.js');
+      const report = await runCarinaFeatureHealthAudit({
+        workspaceId: typeof req.query.workspaceId === 'string' ? req.query.workspaceId : 'platform',
+      });
+      res.json({
+        ok: true,
+        canBuildNewFeature: report.gate.allowed,
+        ...report.gate,
+        checkedAt: report.checkedAt,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   app.get('/api/ops/email-deliverability/status', async (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
       res.status(401).json({ error: 'Unauthorized' });

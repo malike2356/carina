@@ -23,6 +23,7 @@ import {
 import { ActivityHeatmap } from '@/components/analytics/ActivityHeatmap';
 import { CohortRetentionPanel } from '@/components/analytics/CohortRetentionPanel';
 import { FeatureAdoptionPanel } from '@/components/analytics/FeatureAdoptionPanel';
+import { FeatureHealthPanel } from '@/components/analytics/FeatureHealthPanel';
 import { AdminOpsAnalyticsPanel } from '@/components/aiva/AdminOpsAnalyticsPanel';
 import { PlanGateSection } from '@/components/billing/PlanGateSection';
 import { cn } from '@/lib/utils';
@@ -615,6 +616,7 @@ export function AivaAnalyticsDashboard() {
           <SummaryCards period={period} />
           <CohortRetentionPanel />
           <FeatureAdoptionPanel />
+          <FeatureHealthPanel />
           <OpsSection period={period} />
           <VolumeChart period={period} />
           <PlanGateSection planRequired="team" currentPlan={planTier}>
