@@ -33,7 +33,7 @@ function ingest(store: TestimonialStore, items: RawItem[], platform: Platform, p
       author: item.author,
       authorTitle: item.authorTitle ?? null,
       url: item.url,
-      date: item.date,
+      date: item.date || new Date().toISOString().slice(0, 10),
       tags: item.tags ?? [],
       product: item.product || product || 'general',
       platform,
