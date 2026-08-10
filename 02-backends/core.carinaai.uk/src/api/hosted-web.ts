@@ -63,11 +63,22 @@ async function setHostedSession(
   userId: string,
   orgId?: string,
   role?: string,
-): Promise<void> {
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { getCarinaSessionManager } = await import('../sessions/runtime.js');
+  const manager = getCarinaSessionManager();
+  const created = manager.createSession(userId, {
+    userAgent: String(req.headers['user-agent'] ?? ''),
+    ip: req.ip ?? null,
+  });
+  if (!created.ok) {
+    return { ok: false, error: created.error };
+  }
   req.session.hostedAccountId = userId;
   req.session.hostedSessionVersion = await getSessionVersion(userId);
+  req.session.authSessionId = created.session.sessionId;
   if (orgId) req.session.hostedOrgId = orgId;
   if (role) req.session.hostedOrgRole = role as OrgRole;
+  return { ok: true };
 }
 
 export function mountHostedWebRoutes(app: Express): void {
@@ -86,7 +97,11 @@ export function mountHostedWebRoutes(app: Express): void {
     try {
       const { userId } = await registerUser(email, password);
       const profile = await getUserProfile(userId);
-      await setHostedSession(req, userId, profile?.org?.id, profile?.org?.role);
+      const sessionOk = await setHostedSession(req, userId, profile?.org?.id, profile?.org?.role);
+      if (!sessionOk.ok) {
+        res.status(429).json({ error: sessionOk.error });
+        return;
+      }
       recordAuthAuditEvent({ action: 'signup', detail: 'hosted web signup', userId, email, ip: req.ip });
       const redirect = config.carinaOps.productEnabled ? '/ops/onboarding' : '/?welcome=1';
       res.json({ ok: true, redirect });
@@ -123,16 +138,22 @@ export function mountHostedWebRoutes(app: Express): void {
     }
     await clearAuthFailures('hosted-web-login', bruteForceKey);
     await checkSuspiciousLogin(jwtUser.userId, ip, String(req.headers['user-agent'] ?? ''));
-    req.session.hostedAccountId = jwtUser.userId;
-    req.session.hostedSessionVersion = await getSessionVersion(jwtUser.userId);
-    if (result.orgId) req.session.hostedOrgId = result.orgId;
-    if (result.role) req.session.hostedOrgRole = result.role as OrgRole;
+    const sessionOk = await setHostedSession(req, jwtUser.userId, result.orgId, result.role);
+    if (!sessionOk.ok) {
+      res.status(429).json({ error: sessionOk.error });
+      return;
+    }
     recordAuthAuditEvent({ action: 'login_success', detail: 'hosted web login succeeded', userId: jwtUser.userId, email, ip });
     res.json({ ok: true });
   });
 
-  router.post('/logout', (req: Request, res: Response) => {
+  router.post('/logout', async (req: Request, res: Response) => {
     const accountId = req.session?.hostedAccountId;
+    const authSessionId = req.session?.authSessionId;
+    if (accountId && authSessionId) {
+      const { revokeSession, getCarinaSessionManager } = await import('../sessions/runtime.js');
+      revokeSession(getCarinaSessionManager().store, authSessionId, 'logout', 'user');
+    }
     recordAuthAuditEvent({ action: 'logout', detail: 'hosted web logout', userId: accountId, ip: req.ip });
     req.session.destroy(() => res.json({ ok: true }));
   });
@@ -170,6 +191,8 @@ export function mountHostedWebRoutes(app: Express): void {
     // be forced back to login, since a leaked password may also mean a
     // stolen session cookie.
     await bumpSessionVersion(result.userId);
+    const { revokeOnPasswordChange, getCarinaSessionManager } = await import('../sessions/runtime.js');
+    revokeOnPasswordChange(getCarinaSessionManager().store, result.userId);
     recordAuthAuditEvent({
       action: 'password_reset_completed',
       detail: 'password reset completed; sessions revoked',
@@ -177,6 +200,83 @@ export function mountHostedWebRoutes(app: Express): void {
       ip: req.ip,
     });
     res.json({ ok: true });
+  });
+
+  router.get('/sessions', async (req: Request, res: Response) => {
+    const accountId = req.session?.hostedAccountId;
+    if (!accountId) {
+      res.status(401).json({ error: 'Not signed in' });
+      return;
+    }
+    const { getCarinaSessionManager, peekNewLoginBanner } = await import('../sessions/runtime.js');
+    const manager = getCarinaSessionManager();
+    const currentId = req.session.authSessionId;
+    const sessions = manager.getUserSessions(accountId).map((s) => ({
+      sessionId: s.sessionId,
+      deviceLabel: s.device.deviceLabel,
+      location: s.device.location,
+      ipMasked: s.device.ip,
+      lastActiveAt: s.lastActiveAt,
+      createdAt: s.createdAt,
+      isCurrent: s.sessionId === currentId,
+    }));
+    res.json({
+      ok: true,
+      sessions,
+      newLoginBanner: peekNewLoginBanner(accountId),
+      config: manager.config,
+    });
+  });
+
+  router.delete('/sessions/:sessionId', async (req: Request, res: Response) => {
+    const accountId = req.session?.hostedAccountId;
+    if (!accountId) {
+      res.status(401).json({ error: 'Not signed in' });
+      return;
+    }
+    const sessionId = String(req.params.sessionId || '');
+    if (sessionId && sessionId === req.session.authSessionId) {
+      res.status(400).json({ error: 'Cannot revoke the current session here; use logout' });
+      return;
+    }
+    const { revokeSession, getCarinaSessionManager } = await import('../sessions/runtime.js');
+    const row = revokeSession(getCarinaSessionManager().store, sessionId, 'user_request', 'user');
+    if (!row || row.userId !== accountId) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+    res.json({ ok: true });
+  });
+
+  router.post('/sessions/revoke-all', async (req: Request, res: Response) => {
+    const accountId = req.session?.hostedAccountId;
+    if (!accountId) {
+      res.status(401).json({ error: 'Not signed in' });
+      return;
+    }
+    const { revokeAllSessions, getCarinaSessionManager } = await import('../sessions/runtime.js');
+    const result = revokeAllSessions(
+      getCarinaSessionManager().store,
+      accountId,
+      'user_request',
+      'user',
+      req.session.authSessionId,
+    );
+    res.json({ ok: true, removed: result.count });
+  });
+
+  router.post('/sessions/revoke-everywhere', async (req: Request, res: Response) => {
+    const accountId = req.session?.hostedAccountId;
+    if (!accountId) {
+      res.status(401).json({ error: 'Not signed in' });
+      return;
+    }
+    const { revokeAllSessions, getCarinaSessionManager } = await import('../sessions/runtime.js');
+    const result = revokeAllSessions(getCarinaSessionManager().store, accountId, 'user_request', 'user');
+    await bumpSessionVersion(accountId);
+    req.session.destroy(() => {
+      res.json({ ok: true, removed: result.count });
+    });
   });
 
   router.get('/me', async (req: Request, res: Response) => {

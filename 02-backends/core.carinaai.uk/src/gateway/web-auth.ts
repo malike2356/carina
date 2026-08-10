@@ -134,6 +134,20 @@ export async function requireWebAuth(req: Request, res: Response, next: NextFunc
       });
       return;
     }
+    if (req.session.authSessionId) {
+      const { getCarinaSessionManager } = await import('../sessions/runtime.js');
+      const validated = getCarinaSessionManager().validateSession(req.session.authSessionId);
+      if (!validated.ok) {
+        req.session.destroy(() => {
+          if (req.path.startsWith('/api/')) {
+            res.status(401).json({ error: 'Session expired; please sign in again' });
+            return;
+          }
+          res.redirect('/hosted-login');
+        });
+        return;
+      }
+    }
     const profile = await getUserProfile(accountId);
     if (!profile) {
       req.session.destroy(() => {

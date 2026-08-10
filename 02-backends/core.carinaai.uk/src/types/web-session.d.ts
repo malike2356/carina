@@ -12,6 +12,8 @@ declare module 'express-session' {
     /** Snapshot of the user's session-version counter at login time; used to
      *  force-revoke sessions when the password changes (see auth-hardening.ts). */
     hostedSessionVersion?: number;
+    /** Server-side auth session id from shared/sessions registry. */
+    authSessionId?: string;
   }
 }
 
