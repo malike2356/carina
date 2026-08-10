@@ -132,6 +132,17 @@ emailWebhookRouter.post('/events', async (req: Request, res: Response) => {
       return;
     }
     const result = await applyProviderEvent(normalized);
+    try {
+      const { recordProviderDeliveryEvent } = await import('../email/deliverability/runtime.js');
+      const bounce = (normalized.payload?.data as { bounce?: { message?: string } } | undefined)?.bounce;
+      recordProviderDeliveryEvent({
+        emailId: normalized.providerMessageId || normalized.providerEventId || 'unknown',
+        kind: normalized.kind,
+        reason: bounce?.message,
+      });
+    } catch {
+      // Deliverability metrics must not fail webhook ACK.
+    }
     res.status(200).json({ ok: true, result });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -157,6 +168,19 @@ emailWebhookRouter.post('/mailgun/events', async (req: Request, res: Response) =
       return;
     }
     const result = await applyProviderEvent(normalized);
+    try {
+      const { recordProviderDeliveryEvent } = await import('../email/deliverability/runtime.js');
+      recordProviderDeliveryEvent({
+        emailId: normalized.providerMessageId || normalized.providerEventId || 'unknown',
+        kind: normalized.kind,
+        reason: String(
+          (normalized.payload as { 'event-data'?: { reason?: string } })?.['event-data']?.reason
+          ?? '',
+        ) || undefined,
+      });
+    } catch {
+      // Deliverability metrics must not fail webhook ACK.
+    }
     res.status(200).json({ ok: true, result });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

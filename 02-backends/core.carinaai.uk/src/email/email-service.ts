@@ -1,8 +1,11 @@
 import { render } from '@react-email/render';
 import type { ReactElement } from 'react';
-import { config } from '../config/index.js';
 import { isMarketingOptedOut } from './workspace-contact.js';
 import { getResendClient, resolveResendApiKey } from './resend-client.js';
+import {
+  assertSendDomainAllowed,
+  resolveFromForRole,
+} from './deliverability/runtime.js';
 
 export interface SendEmailOptions {
   to: string;
@@ -18,19 +21,6 @@ export interface SendEmailOptions {
   fromName?: string;
 }
 
-function emailFromHeader(nameOverride?: string): string {
-  const name = nameOverride
-    ?? process.env.EMAIL_FROM_NAME
-    ?? process.env.SYSTEM_EMAIL_FROM_NAME
-    ?? 'Verlox';
-  const address =
-    process.env.EMAIL_FROM ??
-    process.env.SYSTEM_EMAIL_FROM ??
-    config.resend.from.match(/<([^>]+)>/)?.[1] ??
-    'contact@verlox.uk';
-  return `${name} <${address}>`;
-}
-
 function previewModeEnabled(): boolean {
   if (process.env.RESEND_PREVIEW_MODE === 'true') return true;
   if (process.env.RESEND_PREVIEW_MODE === 'false') return false;
@@ -38,6 +28,11 @@ function previewModeEnabled(): boolean {
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<{ id?: string } | void> {
+  const role = opts.transactional === true ? 'transactional' : 'marketing';
+  const from = resolveFromForRole(role, opts.fromName);
+  // Always fail closed on domain separation (including marketing).
+  assertSendDomainAllowed(role, from);
+
   try {
     if (!opts.transactional && opts.workspaceId) {
       const optedOut = await isMarketingOptedOut(opts.workspaceId);
@@ -62,7 +57,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ id?: string }
     }
 
     const result = await resendClient.emails.send({
-      from: emailFromHeader(opts.fromName),
+      from,
       to: opts.to,
       subject: opts.subject,
       react: opts.template,

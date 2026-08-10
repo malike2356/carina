@@ -331,6 +331,82 @@ export function mountOpsRoutes(app: Express): void {
     res.json(hostedEmailOperatorStatus());
   });
 
+  app.get('/api/ops/email-deliverability/status', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const {
+        deliveryHealthCheck,
+        bounceAnalysis,
+        generateSetupGuide,
+        validateDNSRecords,
+        warmUpDomain,
+        emailDeliverabilityPolicy,
+      } = await import('../email/deliverability/index.js');
+      const { getDeliveryStore, resolveAppDomain, resolveDomainPlans } = await import(
+        '../email/deliverability/runtime.js'
+      );
+      const appDomain = typeof req.query.domain === 'string' && req.query.domain.trim()
+        ? req.query.domain.trim()
+        : resolveAppDomain();
+      const plans = resolveDomainPlans(appDomain);
+      const dns = await validateDNSRecords(plans.transactional.sendingDomain, {
+        dkimSelector: typeof req.query.dkimSelector === 'string'
+          ? req.query.dkimSelector
+          : 'mail',
+      }).catch(async () => validateDNSRecords(appDomain));
+      const until = new Date().toISOString();
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const health = deliveryHealthCheck(getDeliveryStore(), plans.transactional.sendingDomain, {
+        since,
+        until,
+      });
+      res.json({
+        ok: true,
+        appDomain,
+        plans,
+        policy: emailDeliverabilityPolicy,
+        dns,
+        health,
+        bounces: bounceAnalysis(getDeliveryStore(), plans.transactional.sendingDomain),
+        warmUp: warmUpDomain(plans.transactional.sendingDomain),
+        setupGuidePreview: generateSetupGuide({
+          domain: appDomain,
+          transactionalDomain: plans.transactional.sendingDomain,
+          marketingDomain: plans.marketing.sendingDomain,
+          sendingServices: ['resend'],
+          dmarcPolicy: 'none',
+          rua: process.env.DMARC_RUA || undefined,
+        }).slice(0, 2000),
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/ops/email-deliverability/validate-dns', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const { validateDNSRecords } = await import('../email/deliverability/index.js');
+      const domain = String(req.body?.domain ?? '').trim();
+      if (!domain) {
+        res.status(400).json({ error: 'domain required' });
+        return;
+      }
+      const result = await validateDNSRecords(domain, {
+        dkimSelector: String(req.body?.dkimSelector ?? 'mail'),
+      });
+      res.json({ ok: true, result });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   app.get('/api/ops/companies-house/status', async (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
       res.status(401).json({ error: 'Unauthorized' });
