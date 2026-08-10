@@ -114,6 +114,12 @@ export default function OutreachLeadDetailPage() {
         <Button size="sm" variant="outline" onClick={() => void mark('unsubscribe')}>
           Unsubscribe
         </Button>
+        <Link
+          href={`/aiva/outreach/qualification?name=${encodeURIComponent(lead.name)}${lead.company ? `&company=${encodeURIComponent(lead.company)}` : ''}${lead.email ? `&email=${encodeURIComponent(lead.email)}` : ''}`}
+          className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium text-text-secondary hover:bg-elevated"
+        >
+          Qualify before proposal
+        </Link>
       </div>
 
       {lead.notes ? (

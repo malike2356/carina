@@ -61,6 +61,7 @@ import { workspaceOpsRouter } from './aiva/workspace-ops/index.js';
 import { startAivaLearningReviewScheduler } from './memory/aiva/learning-loop.js';
 import { startPropertyChannelRenderWorker } from './content/media-pipeline/render-queue.js';
 import { startPropertyChannelCadenceScheduler } from './workflows/templates/property-channel/cadence-scheduler.js';
+import { startMonthlyPnLScheduler } from './finance/pnl-scheduler.js';
 
 export function mountCloudRawRoutes(app: Express): void {
   mountCloudWebhook(app);
@@ -100,6 +101,7 @@ export function mountServerRoutes(app: Express): void {
     startAivaLearningReviewScheduler();
     startPropertyChannelRenderWorker();
     startPropertyChannelCadenceScheduler();
+    startMonthlyPnLScheduler();
     mountPaddleCheckoutRoute(app);
     app.use('/api/aiva/analytics', aivaAnalyticsRouter);
     app.use('/api/analytics', aivaAnalyticsRouter);

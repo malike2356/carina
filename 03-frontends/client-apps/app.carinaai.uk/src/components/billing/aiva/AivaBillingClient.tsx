@@ -17,6 +17,8 @@ import {
   paidPlanLabel,
   trialDaysRemaining,
 } from '@/lib/aiva-billing-ui';
+import { DunningRecoveryPanel } from '@/components/billing/aiva/DunningRecoveryPanel';
+import { LivingPnLPanel } from '@/components/billing/aiva/LivingPnLPanel';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-GB', {
@@ -108,7 +110,7 @@ function StatusBanner({ billing }: { billing: AivaBillingViewModel }) {
       border: 'border-l-amber-400',
       bg: 'bg-amber-500/5 border border-amber-500/20',
       heading: 'Payment past due',
-      body: 'Your last payment failed. Update your payment method to keep your Aivas active.',
+      body: 'Your payment method needs attention; update now to avoid interruption. Your Aivas stay active during the grace period.',
       cta: { label: 'Update payment method', variant: 'primary' as const },
     },
     suspended: {
@@ -513,6 +515,8 @@ export function AivaBillingClient() {
       </div>
 
       <StatusBanner billing={billing} />
+      <DunningRecoveryPanel />
+      <LivingPnLPanel />
 
       {billing.state === 'active' && billingReason === 'suspended' ? (
         <div className="rounded-lg border border-green-500/40 bg-green-500/10 p-4 text-sm text-text-primary">

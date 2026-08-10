@@ -21,6 +21,8 @@ import {
   YAxis,
 } from 'recharts';
 import { ActivityHeatmap } from '@/components/analytics/ActivityHeatmap';
+import { CohortRetentionPanel } from '@/components/analytics/CohortRetentionPanel';
+import { FeatureAdoptionPanel } from '@/components/analytics/FeatureAdoptionPanel';
 import { AdminOpsAnalyticsPanel } from '@/components/aiva/AdminOpsAnalyticsPanel';
 import { PlanGateSection } from '@/components/billing/PlanGateSection';
 import { cn } from '@/lib/utils';
@@ -611,6 +613,8 @@ export function AivaAnalyticsDashboard() {
       ) : (
         <>
           <SummaryCards period={period} />
+          <CohortRetentionPanel />
+          <FeatureAdoptionPanel />
           <OpsSection period={period} />
           <VolumeChart period={period} />
           <PlanGateSection planRequired="team" currentPlan={planTier}>

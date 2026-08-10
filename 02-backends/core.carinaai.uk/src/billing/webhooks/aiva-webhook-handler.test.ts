@@ -2,14 +2,14 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type Stripe from 'stripe';
 
 const reactivateSubscriptionMock = vi.fn(async () => undefined);
-const markSubscriptionPastDueMock = vi.fn(async () => undefined);
 const suspendSubscriptionMock = vi.fn(async () => undefined);
 const sendPaymentSuccessEmailMock = vi.fn(async () => undefined);
 const subscriptionsRetrieveMock = vi.fn();
-const poolQueryMock = vi.fn();
+const handleFailedInvoiceMock = vi.fn(async () => null);
+const processSuccessfulRetryMock = vi.fn(async () => null);
 
 vi.mock('../../memory/db.js', () => ({
-  pool: { query: (...args: unknown[]) => poolQueryMock(...args) },
+  pool: { query: vi.fn() },
 }));
 
 vi.mock('../billing-stripe-client.js', () => ({
@@ -22,10 +22,15 @@ vi.mock('../billing-stripe-client.js', () => ({
 
 vi.mock('../aiva-billing.js', () => ({
   reactivateSubscription: (...args: unknown[]) => reactivateSubscriptionMock(...args),
-  markSubscriptionPastDue: (...args: unknown[]) => markSubscriptionPastDueMock(...args),
+  markSubscriptionPastDue: vi.fn(async () => undefined),
   suspendSubscription: (...args: unknown[]) => suspendSubscriptionMock(...args),
   suspendIfGraceExpired: vi.fn(async () => false),
   gracePeriodEndsAt: () => new Date('2026-07-08T00:00:00.000Z'),
+}));
+
+vi.mock('../dunning-engine.js', () => ({
+  handleFailedInvoice: (...args: unknown[]) => handleFailedInvoiceMock(...args),
+  processSuccessfulRetry: (...args: unknown[]) => processSuccessfulRetryMock(...args),
 }));
 
 vi.mock('../../email/email-triggers.js', () => ({
@@ -50,11 +55,11 @@ vi.mock('stripe', () => ({
 describe('aiva-webhook-handler', () => {
   beforeEach(() => {
     reactivateSubscriptionMock.mockClear();
-    markSubscriptionPastDueMock.mockClear();
     suspendSubscriptionMock.mockClear();
     sendPaymentSuccessEmailMock.mockClear();
     subscriptionsRetrieveMock.mockReset();
-    poolQueryMock.mockReset();
+    handleFailedInvoiceMock.mockClear();
+    processSuccessfulRetryMock.mockClear();
   });
 
   it('reads workspaceId from invoice metadata', async () => {
@@ -66,6 +71,7 @@ describe('aiva-webhook-handler', () => {
       lines: { data: [{ period: { end: 1_700_000_000 } }] },
     } as Stripe.Invoice);
 
+    expect(processSuccessfulRetryMock).toHaveBeenCalledWith('ws-direct');
     expect(reactivateSubscriptionMock).toHaveBeenCalledWith('ws-direct');
     expect(subscriptionsRetrieveMock).not.toHaveBeenCalled();
   });
@@ -85,12 +91,10 @@ describe('aiva-webhook-handler', () => {
     } as Stripe.Invoice);
 
     expect(subscriptionsRetrieveMock).toHaveBeenCalledWith('sub_123');
-    expect(reactivateSubscriptionMock).toHaveBeenCalledWith('ws-from-sub');
+    expect(processSuccessfulRetryMock).toHaveBeenCalledWith('ws-from-sub');
   });
 
-  it('suspends on second invoice payment failure', async () => {
-    poolQueryMock.mockResolvedValue({ rows: [{ payment_failed_at: new Date().toISOString() }] });
-
+  it('routes payment failures into dunning instead of suspending on second failure', async () => {
     const { handleAivaInvoicePaymentFailed } = await import('./aiva-webhook-handler.js');
     await handleAivaInvoicePaymentFailed({
       metadata: { workspaceId: 'ws-past-due' },
@@ -98,13 +102,11 @@ describe('aiva-webhook-handler', () => {
       currency: 'gbp',
     } as Stripe.Invoice);
 
-    expect(suspendSubscriptionMock).toHaveBeenCalledWith('ws-past-due', 'payment');
-    expect(markSubscriptionPastDueMock).not.toHaveBeenCalled();
+    expect(handleFailedInvoiceMock).toHaveBeenCalled();
+    expect(suspendSubscriptionMock).not.toHaveBeenCalled();
   });
 
-  it('marks past due on first invoice payment failure', async () => {
-    poolQueryMock.mockResolvedValue({ rows: [{}] });
-
+  it('starts dunning on first invoice payment failure', async () => {
     const { handleAivaInvoicePaymentFailed } = await import('./aiva-webhook-handler.js');
     await handleAivaInvoicePaymentFailed({
       metadata: { workspaceId: 'ws-first-fail' },
@@ -112,10 +114,7 @@ describe('aiva-webhook-handler', () => {
       currency: 'gbp',
     } as Stripe.Invoice);
 
-    expect(markSubscriptionPastDueMock).toHaveBeenCalledWith(
-      'ws-first-fail',
-      new Date('2026-07-08T00:00:00.000Z'),
-    );
+    expect(handleFailedInvoiceMock).toHaveBeenCalled();
     expect(suspendSubscriptionMock).not.toHaveBeenCalled();
   });
 });

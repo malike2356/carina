@@ -64,7 +64,7 @@ export function GracePeriodBanner() {
       )}
     >
       <span className="text-center">
-        Payment failed. Update your payment method to keep your Aiva running.{' '}
+        Payment failed. Your payment method needs attention; update now to avoid interruption.{' '}
         {expiresToday ? (
           <strong>Your Aiva will pause today unless payment is resolved.</strong>
         ) : urgent ? (

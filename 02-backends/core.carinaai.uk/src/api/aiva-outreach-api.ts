@@ -1753,3 +1753,229 @@ aivaOutreachRouter.post('/reminders/process-due', (req: OutreachRequest, res: Re
     note: 'Reminder bodies are logged for Soft Wall / Approvals; they are not mass-sent.',
   });
 });
+
+// --- Client qualification scorecard (sales) ---
+
+aivaOutreachRouter.get('/qualification/template', (req: OutreachRequest, res: Response) => {
+  void import('../sales/index.js').then(
+    ({ getDefaultScorecardTemplate, getWorkspaceWeights, listWalkAwayTemplates, recommendationGuidance }) => {
+      const weights = getWorkspaceWeights(req.workspaceId!);
+      const template = getDefaultScorecardTemplate(weights);
+      res.json({
+        template,
+        walkAwayTemplates: listWalkAwayTemplates(),
+        guidance: {
+          GREEN: recommendationGuidance('GREEN'),
+          YELLOW: recommendationGuidance('YELLOW'),
+          RED: recommendationGuidance('RED'),
+        },
+      });
+    },
+  );
+});
+
+aivaOutreachRouter.get('/qualification/weights', (req: OutreachRequest, res: Response) => {
+  void import('../sales/index.js').then(({ getWorkspaceWeights, getDefaultScorecardTemplate }) => {
+    const weights = getWorkspaceWeights(req.workspaceId!);
+    res.json({ weights, template: getDefaultScorecardTemplate(weights) });
+  });
+});
+
+aivaOutreachRouter.patch('/qualification/weights', (req: OutreachRequest, res: Response) => {
+  void import('../sales/index.js').then(({ setWorkspaceWeights, getDefaultScorecardTemplate }) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const partial = (body.weights ?? body) as Record<string, number>;
+    const weights = setWorkspaceWeights(req.workspaceId!, partial);
+    res.json({ weights, template: getDefaultScorecardTemplate(weights) });
+  });
+});
+
+aivaOutreachRouter.post('/qualification/score', (req: OutreachRequest, res: Response) => {
+  void import('../sales/index.js').then(
+    ({
+      scoreClient,
+      getWorkspaceWeights,
+      recommendationGuidance,
+      suggestDeclineReason,
+      generateDeclineEmail,
+    }) => {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const profile = (body.clientProfile ?? body.profile ?? body) as Parameters<typeof scoreClient>[0];
+      if (!profile || typeof profile !== 'object' || !String(profile.name || '').trim()) {
+        res.status(400).json({ error: 'clientProfile.name is required' });
+        return;
+      }
+      const weights = getWorkspaceWeights(req.workspaceId!);
+      const result = scoreClient(profile, weights);
+      const declineReason = suggestDeclineReason(result);
+      const declinePreview =
+        result.recommendation === 'RED'
+          ? generateDeclineEmail({
+              clientProfile: profile,
+              reason: declineReason,
+              senderName: typeof body.senderName === 'string' ? body.senderName : undefined,
+              alternative: typeof body.alternative === 'string' ? body.alternative : undefined,
+              scorecard: result,
+            })
+          : null;
+      res.json({
+        result,
+        guidance: recommendationGuidance(result.recommendation),
+        suggestedDeclineReason: declineReason,
+        declinePreview,
+      });
+    },
+  );
+});
+
+aivaOutreachRouter.post('/qualification/decline-email', (req: OutreachRequest, res: Response) => {
+  void import('../sales/index.js').then(({ generateDeclineEmail, DECLINE_REASONS }) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const profile = body.clientProfile as Parameters<typeof generateDeclineEmail>[0]['clientProfile'];
+    const reason = body.reason as Parameters<typeof generateDeclineEmail>[0]['reason'];
+    if (!profile?.name || !reason || !DECLINE_REASONS.includes(reason)) {
+      res.status(400).json({ error: 'clientProfile.name and valid reason required' });
+      return;
+    }
+    res.json({
+      email: generateDeclineEmail({
+        clientProfile: profile,
+        reason,
+        senderName: typeof body.senderName === 'string' ? body.senderName : undefined,
+        alternative: typeof body.alternative === 'string' ? body.alternative : undefined,
+      }),
+    });
+  });
+});
+
+aivaOutreachRouter.post('/qualification/declines', (req: OutreachRequest, res: Response) => {
+  void import('../sales/index.js').then(
+    ({
+      scoreClient,
+      getWorkspaceWeights,
+      buildDeclinedDealRecord,
+      appendDeclinedDeal,
+      DECLINE_REASONS,
+      suggestDeclineReason,
+    }) => {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const profile = body.clientProfile as Parameters<typeof scoreClient>[0];
+      if (!profile?.name) {
+        res.status(400).json({ error: 'clientProfile.name is required' });
+        return;
+      }
+      const weights = getWorkspaceWeights(req.workspaceId!);
+      const scorecard =
+        body.scorecard && typeof body.scorecard === 'object'
+          ? (body.scorecard as ReturnType<typeof scoreClient>)
+          : scoreClient(profile, weights);
+      const reason =
+        typeof body.reason === 'string' && DECLINE_REASONS.includes(body.reason as never)
+          ? (body.reason as (typeof DECLINE_REASONS)[number])
+          : suggestDeclineReason(scorecard);
+      const record = buildDeclinedDealRecord({
+        workspaceId: req.workspaceId!,
+        clientProfile: profile,
+        scorecard,
+        reason,
+        screenEarlier: typeof body.screenEarlier === 'string' ? body.screenEarlier : undefined,
+        learningNotes: typeof body.learningNotes === 'string' ? body.learningNotes : undefined,
+        wouldHaveMadeYes: typeof body.wouldHaveMadeYes === 'string' ? body.wouldHaveMadeYes : undefined,
+      });
+      appendDeclinedDeal(record);
+      res.status(201).json({ decline: record });
+    },
+  );
+});
+
+aivaOutreachRouter.get('/qualification/declines', (req: OutreachRequest, res: Response) => {
+  void import('../sales/index.js').then(({ listDeclinedDeals, analyzePatterns, improveScorecard, getWinLossRatio }) => {
+    const declines = listDeclinedDeals(req.workspaceId!);
+    const from = typeof req.query.from === 'string' ? req.query.from : undefined;
+    const to = typeof req.query.to === 'string' ? req.query.to : undefined;
+    const patterns = analyzePatterns(declines, { from, to });
+    res.json({
+      declines,
+      patterns,
+      weightSuggestions: improveScorecard(patterns),
+      winLoss: getWinLossRatio(declines),
+    });
+  });
+});
+
+aivaOutreachRouter.get('/qualification/patterns', (req: OutreachRequest, res: Response) => {
+  void import('../sales/index.js').then(({ listDeclinedDeals, analyzePatterns, improveScorecard }) => {
+    const from = typeof req.query.from === 'string' ? req.query.from : undefined;
+    const to = typeof req.query.to === 'string' ? req.query.to : undefined;
+    const patterns = analyzePatterns(listDeclinedDeals(req.workspaceId!), { from, to });
+    res.json({ patterns, weightSuggestions: improveScorecard(patterns) });
+  });
+});
+
+aivaOutreachRouter.get('/qualification/quarterly-review', (req: OutreachRequest, res: Response) => {
+  void import('../sales/index.js').then(
+    ({ listDeclinedDeals, listFounderOverrides, buildQuarterlyReview }) => {
+      const now = new Date();
+      const defaultFrom = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString();
+      const from = typeof req.query.from === 'string' ? req.query.from : defaultFrom;
+      const to = typeof req.query.to === 'string' ? req.query.to : now.toISOString();
+      const badRaw = req.query.badOutcomesAfterAccept;
+      const bad =
+        typeof badRaw === 'string' && badRaw.trim() !== '' ? Number(badRaw) : undefined;
+      const review = buildQuarterlyReview({
+        declined: listDeclinedDeals(req.workspaceId!),
+        overrides: listFounderOverrides(req.workspaceId!),
+        badOutcomesAfterAccept: Number.isFinite(bad) ? bad : undefined,
+        from,
+        to,
+      });
+      res.json({ review });
+    },
+  );
+});
+
+aivaOutreachRouter.post('/qualification/overrides', (req: OutreachRequest, res: Response) => {
+  void import('../sales/index.js').then(({ appendFounderOverride, scoreClient, getWorkspaceWeights }) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const approvedBy = typeof body.approvedBy === 'string' ? body.approvedBy.trim() : '';
+    const justification = typeof body.justification === 'string' ? body.justification.trim() : '';
+    const clientName =
+      typeof body.clientName === 'string'
+        ? body.clientName.trim()
+        : typeof (body.clientProfile as { name?: string } | undefined)?.name === 'string'
+          ? String((body.clientProfile as { name: string }).name).trim()
+          : '';
+    if (!approvedBy || !justification || !clientName) {
+      res.status(400).json({
+        error: 'approvedBy, justification, and clientName are required for RED override',
+      });
+      return;
+    }
+    let score = typeof body.scorecardScore === 'number' ? body.scorecardScore : undefined;
+    if (score == null && body.clientProfile && typeof body.clientProfile === 'object') {
+      const result = scoreClient(
+        body.clientProfile as Parameters<typeof scoreClient>[0],
+        getWorkspaceWeights(req.workspaceId!),
+      );
+      score = result.score;
+    }
+    const record = appendFounderOverride({
+      id: `override_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId: req.workspaceId!,
+      at: new Date().toISOString(),
+      leadId: typeof body.leadId === 'string' ? body.leadId : undefined,
+      clientName,
+      scorecardScore: score ?? 0,
+      recommendationWas: 'RED',
+      approvedBy,
+      justification,
+    });
+    res.status(201).json({ override: record });
+  });
+});
+
+aivaOutreachRouter.get('/qualification/overrides', (req: OutreachRequest, res: Response) => {
+  void import('../sales/index.js').then(({ listFounderOverrides }) => {
+    res.json({ overrides: listFounderOverrides(req.workspaceId!) });
+  });
+});

@@ -1,14 +1,9 @@
 import type StripeTypes from 'stripe';
 import {
-  markSubscriptionPastDue,
   reactivateSubscription,
-  suspendSubscription,
   suspendIfGraceExpired,
-  gracePeriodEndsAt,
 } from '../aiva-billing.js';
-import { pool } from '../../memory/db.js';
 import {
-  sendPaymentFailedEmail,
   sendPaymentSuccessEmail,
 } from '../../email/email-triggers.js';
 import { aivaAppUrl } from '../../email/workspace-contact.js';
@@ -16,6 +11,8 @@ import {
   resolveWorkspaceIdFromInvoice,
   workspaceFromMetadata,
 } from '../aiva-stripe-metadata.js';
+import { handleFailedInvoice, processSuccessfulRetry } from '../dunning-engine.js';
+import { suspendSubscription } from '../aiva-billing.js';
 
 function formatMoney(amountMinor: number, currency: string): string {
   const value = amountMinor / 100;
@@ -39,6 +36,7 @@ export async function handleAivaInvoicePaid(invoice: StripeTypes.Invoice): Promi
     ? new Date(invoice.lines.data[0].period.end * 1000).toLocaleDateString('en-GB')
     : 'See your billing portal';
 
+  await processSuccessfulRetry(workspaceId);
   await reactivateSubscription(workspaceId);
   await sendPaymentSuccessEmail({
     workspaceId,
@@ -53,30 +51,12 @@ export async function handleAivaInvoicePaymentFailed(invoice: StripeTypes.Invoic
   const workspaceId = await resolveWorkspaceIdFromInvoice(invoice);
   if (!workspaceId) return;
 
+  // Only suspend when an existing grace window has already expired.
   if (await suspendIfGraceExpired(workspaceId)) {
     return;
   }
 
-  const existing = await pool.query(
-    `SELECT payment_failed_at, status FROM aiva_subscriptions WHERE workspace_id = $1`,
-    [workspaceId],
-  );
-  const row = existing.rows[0] as { payment_failed_at?: string | Date; status?: string } | undefined;
-  if (row?.payment_failed_at || row?.status === 'past_due') {
-    await suspendSubscription(workspaceId, 'payment');
-    return;
-  }
-
-  const graceEnds = gracePeriodEndsAt();
-  await markSubscriptionPastDue(workspaceId, graceEnds);
-
-  const amount = formatMoney(invoice.amount_due ?? 0, invoice.currency ?? 'gbp');
-  await sendPaymentFailedEmail({
-    workspaceId,
-    amount,
-    gracePeriodEndsAt: graceEnds.toISOString(),
-    updateUrl: aivaAppUrl('/billing/aiva'),
-  });
+  await handleFailedInvoice(invoice);
 }
 
 export async function handleAivaSubscriptionDeleted(subscription: StripeTypes.Subscription): Promise<void> {

@@ -1642,7 +1642,84 @@ aivaRouter.get('/billing/pricing', async (_req, res) => {
 aivaRouter.get('/billing/status', requireWorkspace, async (req: AivaRequest, res: Response) => {
   const status = await getBillingStatus(req.workspaceId!);
   const downgrade = await getDowngradeConflictFields(req.workspaceId!);
-  res.json({ ...status, ...downgrade });
+  let dunning: unknown = null;
+  try {
+    const { getActiveDunningCase } = await import('../billing/dunning-store.js');
+    const { dunningConfig } = await import('../billing/dunning-engine.js');
+    dunning = {
+      active: getActiveDunningCase(req.workspaceId!),
+      config: dunningConfig(),
+      banner: 'Your payment method needs attention; update now to avoid interruption',
+    };
+  } catch {
+    dunning = null;
+  }
+  res.json({ ...status, ...downgrade, dunning });
+});
+
+aivaRouter.get('/billing/dunning/stats', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  const { getDunningStats, getAtRiskMRR, predictChurnRisk } = await import('../billing/dunning-stats.js');
+  const { dunningConfig } = await import('../billing/dunning-engine.js');
+  const from = typeof req.query.from === 'string' ? req.query.from : undefined;
+  const to = typeof req.query.to === 'string' ? req.query.to : undefined;
+  res.json({
+    stats: getDunningStats({ from, to }),
+    atRisk: getAtRiskMRR(),
+    churnHints: predictChurnRisk(),
+    config: dunningConfig(),
+  });
+});
+
+aivaRouter.post('/billing/dunning/process-due', requireWorkspace, async (_req: AivaRequest, res: Response) => {
+  const { processDueDunning } = await import('../billing/dunning-engine.js');
+  res.json(await processDueDunning());
+});
+
+aivaRouter.get('/finance/pnl', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  const now = new Date();
+  const year = Number(req.query.year) || now.getUTCFullYear();
+  const month = Number(req.query.month) || now.getUTCMonth() + 1;
+  const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+  const { generateMonthlyPnL, renderMonthlyPnLMarkdown } = await import('../finance/index.js');
+  const pnl = await generateMonthlyPnL(year, month, { refresh });
+  const format = typeof req.query.format === 'string' ? req.query.format : 'json';
+  if (format === 'markdown' || format === 'md') {
+    res.type('text/markdown').send(renderMonthlyPnLMarkdown(pnl));
+    return;
+  }
+  res.json({ pnl, markdown: renderMonthlyPnLMarkdown(pnl) });
+});
+
+aivaRouter.get('/finance/pnl/compare', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  const now = new Date();
+  const year = Number(req.query.year) || now.getUTCFullYear();
+  const month = Number(req.query.month) || now.getUTCMonth() + 1;
+  const prev = new Date(Date.UTC(year, month - 2, 1));
+  const { generateMonthlyPnL, compareMonthOverMonth } = await import('../finance/index.js');
+  const current = await generateMonthlyPnL(year, month, { refresh: false });
+  const previous = await generateMonthlyPnL(prev.getUTCFullYear(), prev.getUTCMonth() + 1, {
+    refresh: false,
+  });
+  res.json({ current, previous, delta: compareMonthOverMonth(current, previous) });
+});
+
+aivaRouter.get('/finance/liabilities', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  const now = new Date();
+  const year = Number(req.query.year) || now.getUTCFullYear();
+  const month = Number(req.query.month) || now.getUTCMonth() + 1;
+  const threshold = Number(req.query.threshold ?? 1);
+  const { findLiabilityUsers, buildLiabilityAlert, getLastLiabilityAlert } = await import(
+    '../finance/index.js'
+  );
+  res.json({
+    liabilities: findLiabilityUsers(threshold, year, month),
+    alert: buildLiabilityAlert(year, month) ?? getLastLiabilityAlert(),
+  });
+});
+
+aivaRouter.post('/finance/pnl/run', requireWorkspace, async (_req: AivaRequest, res: Response) => {
+  const { runMonthlyPnLJob } = await import('../finance/index.js');
+  res.json(await runMonthlyPnLJob());
 });
 
 aivaRouter.get('/billing/invoices', requireWorkspace, async (req: AivaRequest, res: Response) => {

@@ -7,6 +7,7 @@ const TABS = [
   { href: '/aiva/outreach', label: 'Overview' },
   { href: '/aiva/outreach/leads', label: 'CRM Leads' },
   { href: '/aiva/outreach/pipeline', label: 'Pipeline' },
+  { href: '/aiva/outreach/qualification', label: 'Qualify' },
   { href: '/aiva/outreach/replies', label: 'Replies' },
   { href: '/aiva/outreach/bookings', label: 'Bookings' },
   { href: '/aiva/outreach/lists', label: 'Lists' },

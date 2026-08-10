@@ -115,7 +115,7 @@ function Metric({ label, value }: { label: string; value: string | number | null
     <div className="min-w-0">
       <div className="text-[11px] uppercase tracking-wide text-text-muted">{label}</div>
       <div className="mt-0.5 text-lg font-semibold text-text-primary">
-        {value == null ? '—' : value}
+        {value == null ? ';' : value}
       </div>
     </div>
   );
@@ -388,7 +388,7 @@ export function ConciergeArea({ workerId }: { workerId: string }) {
                     <td className="px-3 py-2">{String(c.status ?? '')}</td>
                     <td className="px-3 py-2">{String(c.priority ?? '')}</td>
                     <td className="px-3 py-2 text-text-muted">
-                      {c.createdAt ? new Date(String(c.createdAt)).toLocaleString() : '—'}
+                      {c.createdAt ? new Date(String(c.createdAt)).toLocaleString() : ';'}
                     </td>
                   </tr>
                 ))}
@@ -440,11 +440,11 @@ export function ConciergeArea({ workerId }: { workerId: string }) {
                         {new Date(b.startsAt).toLocaleString()}
                       </td>
                       <td className="px-3 py-2">{b.status}</td>
-                      <td className="px-3 py-2">{b.invitationUiLabel ?? b.invitationDeliveryState ?? '—'}</td>
+                      <td className="px-3 py-2">{b.invitationUiLabel ?? b.invitationDeliveryState ?? ';'}</td>
                       <td className="px-3 py-2 text-xs text-text-muted">
                         {b.conferenceProvider
                           ? `${b.conferenceProvider}${b.conferenceManaged ? ' (managed)' : ''}`
-                          : '—'}
+                          : ';'}
                         {b.meetingUrl ? (
                           <div>
                             <a href={b.meetingUrl} className="underline" target="_blank" rel="noreferrer">
