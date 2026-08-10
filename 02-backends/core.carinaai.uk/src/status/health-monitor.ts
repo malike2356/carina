@@ -13,6 +13,7 @@ export async function defaultHttpPing(endpoint: MonitoredEndpoint): Promise<{
   statusCode?: number;
   latencyMs?: number;
   error?: string;
+  at?: string;
 }> {
   const expect = endpoint.expectStatus ?? 200;
   const started = Date.now();
@@ -42,7 +43,7 @@ export async function pingEndpoints(
   store: StatusStore,
   opts?: { pingFn?: PingFn; now?: string },
 ): Promise<PingResult[]> {
-  const pingFn = opts?.pingFn || defaultHttpPing;
+  const pingFn: PingFn = opts?.pingFn || defaultHttpPing;
   const at = opts?.now || new Date().toISOString();
   const results: PingResult[] = [];
   for (const ep of store.listEndpoints()) {
