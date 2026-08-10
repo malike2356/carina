@@ -1484,13 +1484,13 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
   const { setupExpressErrorHandler, captureException } = await import('#core/observability/sentry.js');
   await setupExpressErrorHandler(app as { use: (...args: unknown[]) => unknown });
 
-  // Catch-all error handler - must be last
-  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const { expressErrorMiddleware, installCarinaErrorHandling } = await import('#core/errors/runtime.js');
+  installCarinaErrorHandling();
+
+  // Catch-all: public { error: { message, reference } } + private searchable log
+  app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
     void captureException(err);
-    console.error('[web error]', err.message, err.stack?.split('\n')[1]);
-    if (!res.headersSent) {
-      res.status(500).json({ error: err.message });
-    }
+    expressErrorMiddleware(err, req, res, next);
   });
 
   return app;

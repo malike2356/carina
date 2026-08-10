@@ -95,6 +95,12 @@ process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
 
 async function main(): Promise<void> {
+  try {
+    const { installCarinaErrorHandling } = await import('./errors/runtime.js');
+    installCarinaErrorHandling();
+  } catch {
+    // never block boot on error-handler install
+  }
   const { initSentry } = await import('./observability/sentry.js');
   await initSentry();
 

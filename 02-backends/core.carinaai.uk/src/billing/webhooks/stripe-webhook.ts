@@ -83,8 +83,13 @@ export class StripeWebhookHandler {
         await this.handleEvent(event);
         res.json({ received: true });
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        res.status(400).send(msg);
+        const { sendPublicError } = await import('../../errors/runtime.js');
+        sendPublicError(res, err, 400, undefined, {
+          boundary: 'payment',
+          route: '/webhooks/stripe',
+          method: 'POST',
+          requestBody: null,
+        });
       }
     };
   }

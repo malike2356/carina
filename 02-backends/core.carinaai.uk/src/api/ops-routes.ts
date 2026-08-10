@@ -378,6 +378,53 @@ export function mountOpsRoutes(app: Express): void {
     }
   });
 
+  app.get('/api/ops/errors/search', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const { searchErrors, currentFiveHundredSpike } = await import('../errors/runtime.js');
+      const rows = searchErrors({
+        from: typeof req.query.from === 'string' ? req.query.from : undefined,
+        to: typeof req.query.to === 'string' ? req.query.to : undefined,
+        userId: typeof req.query.userId === 'string' ? req.query.userId : undefined,
+        route: typeof req.query.route === 'string' ? req.query.route : undefined,
+        statusCode:
+          typeof req.query.statusCode === 'string' && req.query.statusCode.trim()
+            ? Number(req.query.statusCode)
+            : undefined,
+        errorReference:
+          typeof req.query.errorReference === 'string' ? req.query.errorReference : undefined,
+        limit:
+          typeof req.query.limit === 'string' && req.query.limit.trim()
+            ? Number(req.query.limit)
+            : 100,
+      });
+      res.json({ ok: true, count: rows.length, spike: currentFiveHundredSpike(), errors: rows });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.get('/api/ops/errors/:errorReference', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const { getErrorContext } = await import('../errors/runtime.js');
+      const row = getErrorContext(String(req.params.errorReference || ''));
+      if (!row) {
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
+      res.json({ ok: true, error: row });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   app.get('/api/ops/feature-health', async (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
       res.status(401).json({ error: 'Unauthorized' });
