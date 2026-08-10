@@ -621,6 +621,7 @@ export class GatewayRouter {
       const {
         resolveWorkspaceIdForChat,
         resolveKeprixProductForChat,
+        buildKeprixSessionTools,
         shouldRouteChatThroughKeprix,
         messageNeedsCarinaNativeTools,
         streamKeprixAgentRun,
@@ -630,16 +631,23 @@ export class GatewayRouter {
         sessionId: message.sessionId,
         clientSessionId: message.clientSessionId,
       });
-      // Keprix primary is text-only today (empty tools). Use Carina for tool-backed asks.
+      const product = resolveKeprixProductForChat({
+        workerPresent: Boolean(workerCtx),
+        sessionId: message.sessionId,
+        clientSessionId: message.clientSessionId,
+      });
+      const keprixTools = workerCtx
+        ? await buildKeprixSessionTools({
+          workspaceId,
+          sessionId: message.sessionId,
+          workerId: workerCtx.worker.id,
+          product,
+        })
+        : [];
       const useKeprix =
         shouldRouteChatThroughKeprix(workspaceId)
         && !messageNeedsCarinaNativeTools(content);
       if (useKeprix) {
-        const product = resolveKeprixProductForChat({
-          workerPresent: Boolean(workerCtx),
-          sessionId: message.sessionId,
-          clientSessionId: message.clientSessionId,
-        });
         const systemPrompt = [
           message.systemPrompt?.trim() ?? '',
           this.sessionSystemPromptSuffixes.get(message.sessionId)?.trim() ?? '',
@@ -653,6 +661,7 @@ export class GatewayRouter {
           systemPrompt,
           product,
           workerId: workerCtx?.worker?.id ?? null,
+          tools: keprixTools,
         })) {
           keprixOk = true;
           keprixChunks.push(chunk);

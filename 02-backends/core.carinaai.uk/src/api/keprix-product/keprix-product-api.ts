@@ -6,6 +6,8 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Express, Request, Response } from 'express';
+import { getSessionTool } from '../../tools/session-tool-store.js';
+import { getWorkerSessionContext } from '../../workers/worker-session-context.js';
 
 type Ctx = {
   workspace_id: string;
@@ -20,6 +22,24 @@ type Ctx = {
 };
 
 const idempotentApplies = new Map<string, Record<string, unknown>>();
+
+const trustedBodyKeys = new Set([
+  'workspace_id', 'user_id', 'worker_id', 'conversation_id',
+  'platform_user_id', 'platform_conversation_id', 'platform_scope',
+  'correlation_id', 'idempotency_key', 'approval_token', 'approval_id',
+  'actor_scopes', 'actor_id', 'actor_type', 'granted_scopes',
+  'channel_binding', 'approval_evidence', 'product', 'tenant_id',
+  'etag', 'if_match', 'authorization_bearer', 'product_host', 'api_key',
+  'auth_header', 'authorization',
+]);
+
+function modelToolArguments(body: unknown): Record<string, unknown> {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return {};
+  return Object.fromEntries(
+    Object.entries(body as Record<string, unknown>)
+      .filter(([key]) => !trustedBodyKeys.has(key)),
+  );
+}
 
 function sharedToken(): string {
   return (
@@ -88,6 +108,44 @@ export function mountKeprixProductApi(app: Express): void {
       ],
       default_deny: true,
     });
+  });
+
+  app.post('/api/keprix/v1/tools/:sessionId/:toolName', async (req, res) => {
+    if (!requireBootstrap(req, res)) return;
+    const sessionId = String(req.params.sessionId ?? '').trim();
+    const toolName = String(req.params.toolName ?? '').trim();
+    const context = getWorkerSessionContext(sessionId);
+    const tool = getSessionTool(sessionId, toolName);
+    if (!context || !tool) {
+      res.status(404).json({ error: 'tool session not found', code: 'not_found' });
+      return;
+    }
+    if (tool.dangerous || tool.requiresConfirmation) {
+      res.status(403).json({ error: 'native approval required', code: 'approval_required' });
+      return;
+    }
+
+    const trustedWorkspace = String(req.headers['x-keprix-trusted-workspace-id'] ?? '').trim();
+    const trustedActor = String(req.headers['x-keprix-trusted-actor-id'] ?? '').trim();
+    const trustedConversation = String(req.headers['x-keprix-trusted-conversation-id'] ?? '').trim();
+    const trustedProduct = String(req.headers['x-keprix-trusted-product'] ?? '').trim().toLowerCase();
+    const validProduct = trustedProduct === 'aiva' || trustedProduct === 'carina';
+    if (
+      trustedWorkspace !== context.worker.workspaceId
+      || trustedActor !== context.worker.id
+      || trustedConversation !== sessionId
+      || !validProduct
+    ) {
+      res.status(403).json({ error: 'trusted context mismatch', code: 'denied' });
+      return;
+    }
+
+    try {
+      const result = await tool.execute(modelToolArguments(req.body));
+      res.json(result);
+    } catch {
+      res.status(500).json({ error: 'tool execution failed', code: 'tool_failed' });
+    }
   });
 
   app.post('/api/keprix/v1/token/exchange', (req, res) => {

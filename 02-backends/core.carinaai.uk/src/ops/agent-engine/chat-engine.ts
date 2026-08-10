@@ -16,6 +16,19 @@ export type KeprixAgentRunInput = {
   workerId?: string | null;
   shadow?: boolean;
   idempotencyKey?: string;
+  tools?: KeprixSessionTool[];
+};
+
+export type KeprixSessionTool = {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  http_endpoint: string;
+  auth_header: string;
+  workspace_id: string;
+  worker_id: string;
+  conversation_id: string;
+  product: KeprixProductKey;
 };
 
 export type KeprixAgentRunResult = {
@@ -42,6 +55,40 @@ function sharedToken(): string {
     ?? process.env.KEPRIX_SERVICE_TOKEN
     ?? ''
   ).trim();
+}
+
+function callbackBaseUrl(): string {
+  return (
+    process.env.CARINA_KEPRIX_CALLBACK_BASE_URL
+    ?? process.env.CARINA_CORE_URL
+    ?? process.env.CORE_URL
+    ?? 'https://core.carinaai.uk'
+  ).replace(/\/$/, '');
+}
+
+export async function buildKeprixSessionTools(input: {
+  workspaceId: string;
+  sessionId: string;
+  workerId: string;
+  product: KeprixProductKey;
+}): Promise<KeprixSessionTool[]> {
+  const token = sharedToken();
+  if (!token) return [];
+  const { listSessionTools } = await import('../../tools/session-tool-store.js');
+  const endpointBase = callbackBaseUrl();
+  return listSessionTools(input.sessionId)
+    .filter((tool) => !tool.dangerous && !tool.requiresConfirmation)
+    .map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters as Record<string, unknown>,
+    http_endpoint: `${endpointBase}/api/keprix/v1/tools/${encodeURIComponent(input.sessionId)}/${encodeURIComponent(tool.name)}`,
+    auth_header: `Bearer ${token}`,
+    workspace_id: input.workspaceId,
+    worker_id: input.workerId,
+    conversation_id: input.sessionId,
+    product: input.product,
+    }));
 }
 
 /** Prefer tenant/workspace id; else parse cloud:{workspace}:{clientSession}. */
@@ -130,6 +177,7 @@ export async function invokeKeprixAgentRun(input: KeprixAgentRunInput): Promise<
   const timeoutMs = Math.max(15_000, (Number(config.timeout_seconds) || 30) * 1000);
   const correlationId = `chat-${Date.now()}-${randomUUID().slice(0, 8)}`;
   const model = (input.model || config.default_model || 'deepseek-v4-pro').trim();
+  const tools = input.tools ?? [];
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -153,8 +201,8 @@ export async function invokeKeprixAgentRun(input: KeprixAgentRunInput): Promise<
           temperature: 0.7,
           system_prompt: input.systemPrompt ?? '',
           messages: [{ role: 'user', content: input.message }],
-          tools: [],
-          carina_tools: [],
+          tools: tools.map(({ name, description, parameters }) => ({ name, description, parameters })),
+          carina_tools: tools,
           worker_id: input.workerId ?? null,
           inject_worker_kb: true,
           escalation_enabled: true,
