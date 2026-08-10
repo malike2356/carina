@@ -266,6 +266,12 @@ describe('CarinaOrchestrator fast lane', () => {
 
     expect(chatCheap).not.toHaveBeenCalled();
     expect(events[0]?.content).toContain('AI agent');
+
+    const identityEvents: Array<{ type: string; content?: string }> = [];
+    for await (const event of orc.turn('who am I?')) {
+      identityEvents.push(event);
+    }
+    expect(identityEvents[0]?.content).toContain('person I am assisting');
   });
 
   it('answers capability typos before identity quick reply', async () => {

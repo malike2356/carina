@@ -178,6 +178,9 @@ export class CarinaOrchestrator {
       const runtime = collectSurfaceRuntimeSnapshot();
       return buildSurfaceContract(surfaceContext(), runtime).identityLine;
     }
+    if (/^who am i\??$/.test(text)) {
+      return 'You are the person I am assisting in this chat. I can use only the identity and workspace details available to this conversation.';
+    }
     if (/\bdo you have (persistent )?memory\b|\bcan you remember\b/.test(text)) {
       const status = await getMemoryStatus({
         platform: this.platform,
