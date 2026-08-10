@@ -482,31 +482,31 @@ export default function OutreachLeadsPage() {
         <p className="text-xs text-text-muted">Loading leads...</p>
       ) : null}
 
-      {/* Row 1: title + actions */}
-      <div className="flex flex-nowrap items-center gap-x-1.5 overflow-x-auto pb-0.5">
-        <h2 className="shrink-0 whitespace-nowrap text-sm font-semibold text-text-primary">CRM Leads</h2>
-        <span className="shrink-0 whitespace-nowrap text-xs text-text-muted">{total} leads</span>
-        <span className="hidden h-4 w-px shrink-0 bg-border sm:block" aria-hidden />
-        <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => setShowIngest((v) => !v)}>
-          {showIngest ? 'Hide add / import' : 'Add / Import'}
+      {/* Row 1: title + actions (wraps; no horizontal scroll) */}
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5">
+        <h2 className="text-sm font-semibold text-text-primary">CRM Leads</h2>
+        <span className="text-xs text-text-muted">{total} leads</span>
+        <span className="hidden h-4 w-px bg-border sm:block" aria-hidden />
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setShowIngest((v) => !v)}>
+          {showIngest ? 'Hide import' : 'Add / Import'}
         </Button>
-        <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => exportLeads(false)}>
-          Export view
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => exportLeads(false)}>
+          Export
         </Button>
         {selected.size > 0 ? (
-          <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => exportLeads(true)}>
+          <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => exportLeads(true)}>
             Export selected
           </Button>
         ) : null}
-        <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => void createLeadSheet()}>
-          Connect sheet
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => void createLeadSheet()}>
+          Sheet
         </Button>
-        <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => void saveCurrentView()}>
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => void saveCurrentView()}>
           Save view
         </Button>
         <Link
           href="/aiva/outreach/companies-house"
-          className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-md border border-border px-2.5 text-xs"
+          className="inline-flex h-7 items-center rounded-md border border-border px-2 text-xs"
         >
           Companies House
         </Link>
@@ -523,7 +523,7 @@ export default function OutreachLeadsPage() {
           toolbarLeading={(
             <>
               <select
-                className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                className="h-7 max-w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 aria-label="Pipeline view"
@@ -536,64 +536,69 @@ export default function OutreachLeadsPage() {
                 ))}
               </select>
               <input
-                className="h-7 min-w-40 max-w-xs shrink grow basis-40 rounded-md border border-border bg-transparent px-2 text-xs"
-                placeholder="Search company, contact, email, niche, town"
+                className="h-7 min-w-0 flex-1 basis-40 rounded-md border border-border bg-transparent px-2 text-xs"
+                placeholder="Search leads"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                aria-label="Search company, contact, email, niche, town"
               />
               <select
-                className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                className="h-7 max-w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
                 value={sourceFilter}
                 onChange={(e) => setSourceFilter(e.target.value)}
+                aria-label="Source"
               >
-                <option value="all">All sources</option>
+                <option value="all">Sources</option>
                 {sources.map((source) => (
                   <option key={source} value={source}>{source}</option>
                 ))}
               </select>
               <input
-                className="h-7 w-24 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                className="h-7 w-20 rounded-md border border-border bg-transparent px-1.5 text-xs"
                 placeholder="Niche"
                 value={nicheFilter}
                 onChange={(e) => setNicheFilter(e.target.value)}
               />
               <input
-                className="h-7 w-24 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                className="h-7 w-20 rounded-md border border-border bg-transparent px-1.5 text-xs"
                 placeholder="Priority"
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
               />
-              <label className="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap px-1 text-xs text-text-muted">
+              <label className="inline-flex h-7 items-center gap-1 px-0.5 text-xs text-text-muted">
                 <input type="checkbox" checked={hasEmailOnly} onChange={(e) => setHasEmailOnly(e.target.checked)} />
-                Has email
+                Email
               </label>
               <select
-                className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                className="h-7 max-w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
                 value={sortField}
                 onChange={(e) => setSortField(e.target.value)}
+                aria-label="Sort field"
               >
-                <option value="updatedAt">Sort: Updated</option>
-                <option value="company">Sort: Company</option>
-                <option value="contactName">Sort: Contact</option>
-                <option value="status">Sort: Status</option>
-                <option value="priority">Sort: Priority</option>
+                <option value="updatedAt">Updated</option>
+                <option value="company">Company</option>
+                <option value="contactName">Contact</option>
+                <option value="status">Status</option>
+                <option value="priority">Priority</option>
               </select>
               <select
-                className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                className="h-7 max-w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
                 value={sortDir}
                 onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
+                aria-label="Sort direction"
               >
                 <option value="desc">Desc</option>
                 <option value="asc">Asc</option>
               </select>
               <select
-                className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                className="h-7 max-w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
                 value={density}
                 onChange={(e) => {
                   const next = e.target.value as GridDensity;
                   setDensity(next);
                   void persistPrefs({ ...gridPrefs, density: next });
                 }}
+                aria-label="Row density"
               >
                 <option value="compact">Compact</option>
                 <option value="comfortable">Comfortable</option>
@@ -602,7 +607,7 @@ export default function OutreachLeadsPage() {
               {selected.size > 0 ? (
                 <>
                   <select
-                    className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                    className="h-7 max-w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
                     defaultValue=""
                     onChange={(e) => {
                       const value = e.target.value as PipelineStatus;
@@ -617,7 +622,7 @@ export default function OutreachLeadsPage() {
                     ))}
                   </select>
                   <select
-                    className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                    className="h-7 max-w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
                     defaultValue=""
                     onChange={(e) => {
                       if (!e.target.value) return;
@@ -631,7 +636,7 @@ export default function OutreachLeadsPage() {
                     ))}
                   </select>
                   <select
-                    className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                    className="h-7 max-w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
                     defaultValue=""
                     onChange={(e) => {
                       if (!e.target.value) return;
@@ -645,7 +650,7 @@ export default function OutreachLeadsPage() {
                     ))}
                   </select>
                   <select
-                    className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                    className="h-7 max-w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
                     defaultValue=""
                     onChange={(e) => {
                       if (!e.target.value) return;
@@ -658,7 +663,7 @@ export default function OutreachLeadsPage() {
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
-                  <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => void runBulk('archive')}>
+                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => void runBulk('archive')}>
                     Archive
                   </Button>
                 </>

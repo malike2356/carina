@@ -283,69 +283,62 @@ export function CrmLeadsGrid({
 
   return (
     <div className="space-y-2" onKeyDown={onKeyDown} tabIndex={0} role="grid" aria-label="CRM leads spreadsheet">
-      <div className="flex flex-nowrap items-center gap-x-1.5 overflow-x-auto rounded-md border border-border bg-elevated p-1.5">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-1 rounded-md border border-border bg-elevated p-1.5">
         {toolbarLeading}
-        <label className="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap text-xs text-text-muted">
-          Status
-          <select
-            className="h-7 rounded border border-border bg-transparent px-1.5 text-xs"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All</option>
-            {Object.keys(PIPELINE_LABELS).map((status) => (
-              <option key={status} value={status}>{PIPELINE_LABELS[status as keyof typeof PIPELINE_LABELS] ?? status}</option>
-            ))}
-          </select>
-        </label>
-        <label className="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap text-xs text-text-muted">
-          Booking
-          <select
-            className="h-7 rounded border border-border bg-transparent px-1.5 text-xs"
-            value={bookingFilter}
-            onChange={(e) => setBookingFilter(e.target.value)}
-          >
-            <option value="all">All</option>
-            <option value="none">None</option>
-            <option value="offered">Offered</option>
-            <option value="booked">Booked</option>
-            <option value="attended">Attended</option>
-            <option value="no_show">No-show</option>
-          </select>
-        </label>
-        <label className="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap text-xs text-text-muted">
-          Reply
-          <select
-            className="h-7 rounded border border-border bg-transparent px-1.5 text-xs"
-            value={replyFilter}
-            onChange={(e) => setReplyFilter(e.target.value)}
-          >
-            <option value="all">All</option>
-            <option value="none">None</option>
-            <option value="replied">Replied</option>
-            <option value="unsubscribed">Unsubscribed</option>
-          </select>
-        </label>
-        <span className="shrink-0 whitespace-nowrap text-xs text-text-muted">
+        <select
+          className="h-7 max-w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label="Status"
+        >
+          <option value="all">Status: All</option>
+          {Object.keys(PIPELINE_LABELS).map((status) => (
+            <option key={status} value={status}>{PIPELINE_LABELS[status as keyof typeof PIPELINE_LABELS] ?? status}</option>
+          ))}
+        </select>
+        <select
+          className="h-7 max-w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
+          value={bookingFilter}
+          onChange={(e) => setBookingFilter(e.target.value)}
+          aria-label="Booking"
+        >
+          <option value="all">Booking: All</option>
+          <option value="none">None</option>
+          <option value="offered">Offered</option>
+          <option value="booked">Booked</option>
+          <option value="attended">Attended</option>
+          <option value="no_show">No-show</option>
+        </select>
+        <select
+          className="h-7 max-w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
+          value={replyFilter}
+          onChange={(e) => setReplyFilter(e.target.value)}
+          aria-label="Reply"
+        >
+          <option value="all">Reply: All</option>
+          <option value="none">None</option>
+          <option value="replied">Replied</option>
+          <option value="unsubscribed">Unsubscribed</option>
+        </select>
+        <span className="text-xs text-text-muted">
           {visibleLeads.length}/{leads.length}
-        </span>
-        <span className="hidden shrink-0 whitespace-nowrap text-[11px] text-text-muted xl:inline" title="Frozen: selection, Company, Contact. Arrow keys move; Enter edits; Ctrl/Cmd+Z undoes.">
-          {columns.length} cols
         </span>
         <button
           type="button"
-          className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2.5 text-xs disabled:opacity-40"
+          className="h-7 rounded-md border border-border bg-transparent px-2 text-xs disabled:opacity-40"
           disabled={undoStack.length === 0}
           onClick={() => void undo()}
+          title="Undo last cell edit"
         >
           Undo
         </button>
-        <div className="relative shrink-0" ref={panelRef}>
+        <div className="relative" ref={panelRef}>
           <button
             type="button"
-            className="h-7 rounded-md border border-border bg-transparent px-2.5 text-xs font-medium text-text-primary hover:bg-overlay"
+            className="h-7 rounded-md border border-border bg-transparent px-2 text-xs font-medium text-text-primary hover:bg-overlay"
             onClick={() => setColumnsOpen((open) => !open)}
             aria-expanded={columnsOpen}
+            title="Frozen: selection, Company, Contact. Arrow keys move; Enter edits; Ctrl/Cmd+Z undoes."
           >
             Columns ({columns.length})
           </button>
