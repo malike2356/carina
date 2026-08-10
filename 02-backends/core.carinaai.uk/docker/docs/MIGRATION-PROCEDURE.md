@@ -79,3 +79,23 @@ bash docker/scripts/deploy-staging-atomic.sh --rollback carina-web-staging
 - [ ] No destructive change without data backfill step
 - [ ] `.env.example` updated if new env vars required
 - [ ] `ENV-INVENTORY.md` updated for new env vars
+
+## Zero-downtime expand/contract
+
+For column renames and other dual-write schema changes, use the toolkit under `src/migrations-zdt/` (shared expand/contract helpers):
+
+1. Plan with **add-before-drop** (never drop the old column first).
+2. Generate and store a paired `.rollback.sql` artifact **before** applying forward SQL.
+3. Create or refresh a staging mirror; run the plan on staging; mark staging validated.
+4. Production apply requires the explicit token `CONFIRM_PROD:<migrationName>` via ops API or deploy tooling.
+5. Backfill in batches (default 1000); keep statement lock budget under 100ms.
+
+Ops planning APIs (auth required; dry-run only; they do not execute production DDL):
+
+- `GET /api/ops/migrations-zdt`
+- `POST /api/ops/migrations-zdt/plan/add-before-drop`
+- `POST /api/ops/migrations-zdt/staging-mirror`
+- `POST /api/ops/migrations-zdt/:name/mark-staging-validated`
+- `POST /api/ops/migrations-zdt/:name/run-production` (confirmation gate only)
+
+Numbered SQL under `src/infrastructure/migrations/` remains the deploy-time apply path.

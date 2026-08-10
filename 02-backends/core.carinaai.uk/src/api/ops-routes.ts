@@ -46,12 +46,14 @@ import {
 import { conversationHealthHandler } from './conversation-health.js';
 import { mountOpsAgentEngineRoutes } from './ops-agent-engine-routes.js';
 import { mountKeprixProductApi } from './keprix-product/keprix-product-api.js';
+import { mountMigrationsZdtOpsRoutes } from '../migrations-zdt/ops-routes.js';
 
 export function mountOpsRoutes(app: Express): void {
   mountObservabilityRoutes(app);
   mountConversationHealthRoutes(app);
   mountOpsAgentEngineRoutes(app);
   mountKeprixProductApi(app);
+  mountMigrationsZdtOpsRoutes(app);
 
   app.get('/api/ops/conversations/:workerId', async (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
