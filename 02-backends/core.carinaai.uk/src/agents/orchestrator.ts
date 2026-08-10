@@ -456,8 +456,11 @@ export class CarinaOrchestrator {
       try {
         const latencyMs = Date.now() - started;
         const toolErrors = countToolErrors(logState.toolCallLog);
-        const provider = llm.current().name;
-        const model = typeof llm.currentModel === 'function' ? llm.currentModel() : '';
+        // Prefer the provider selected for this session. Provider-level telemetry
+        // separately records the actual provider used after any failover.
+        const provider = this.getProviderOverride()?.name ?? llm.current().name;
+        const model = this.getProviderOverride()?.model
+          ?? (typeof llm.currentModel === 'function' ? llm.currentModel() : '');
         void recordTurn({
           sessionId: this.sessionId,
           profile: process.env.CARINA_PROFILE ?? getActiveProfileName() ?? 'default',

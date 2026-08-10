@@ -5,6 +5,7 @@ import {
   listTenantProvidersForTenant,
 } from '../brain/tenant-provider-keys.js';
 import type { ProviderOverride } from '../brain/llm.js';
+import { PROVIDER_MAP, isProviderConfigured, providerModel } from '../brain/provider-registry.js';
 
 export type AivaLlmLane = 'trial' | 'paid' | 'platform' | 'byok';
 
@@ -12,7 +13,7 @@ export type ResolvedProductLlm = {
   lane: AivaLlmLane;
   provider: string;
   model: string;
-  source: 'billing_config' | 'platform_default' | 'workspace_byok';
+  source: 'billing_config' | 'platform_default' | 'workspace_byok' | 'engine_policy';
   reason: string;
 };
 
@@ -90,6 +91,17 @@ export async function resolveWorkspaceByokLlm(
 }
 
 export async function resolveAivaProductLlm(workspaceId: string): Promise<ResolvedProductLlm> {
+  const enginePolicy = (process.env.AIVA_ENGINE_POLICY ?? '').trim().toLowerCase();
+  const keprix = PROVIDER_MAP.keprix;
+  if ((enginePolicy === 'keprix_preferred' || process.env.KEPRIX_PREFERRED === 'true') && keprix && isProviderConfigured(keprix)) {
+    return {
+      lane: 'platform',
+      provider: 'keprix',
+      model: providerModel(keprix),
+      source: 'engine_policy',
+      reason: 'Keprix preferred engine policy is enabled and the Keprix provider is configured',
+    };
+  }
   const byok = await resolveWorkspaceByokLlm(workspaceId);
   if (byok) return byok;
 
@@ -112,7 +124,7 @@ export async function resolveAivaProductLlm(workspaceId: string): Promise<Resolv
 }
 
 export function toProviderOverride(resolved: ResolvedProductLlm): ProviderOverride | undefined {
-  if (resolved.source !== 'billing_config' && resolved.source !== 'workspace_byok') {
+  if (resolved.source !== 'billing_config' && resolved.source !== 'workspace_byok' && resolved.source !== 'engine_policy') {
     return undefined;
   }
   if (!resolved.provider) return undefined;

@@ -33,6 +33,10 @@ describe('product-llm-resolve', () => {
     getTenantProvider.mockResolvedValue(null);
     process.env.DEFAULT_PROVIDER = 'openai';
     process.env.DEFAULT_MODEL = 'gpt-4o-mini';
+    delete process.env.AIVA_ENGINE_POLICY;
+    delete process.env.KEPRIX_PREFERRED;
+    delete process.env.KEPRIX_SERVICE_TOKEN;
+    delete process.env.KEPRIX_API_BASE_URL;
   });
 
   it('maps trial statuses to trial lane', async () => {
@@ -85,5 +89,16 @@ describe('product-llm-resolve', () => {
     expect(resolved.provider).toBe('gemini');
     expect(resolved.model).toBe('gemini-3.5-flash-lite');
     expect(toProviderOverride(resolved)).toEqual({ name: 'gemini', model: 'gemini-3.5-flash-lite' });
+  });
+
+  it('selects configured Keprix when the preferred engine policy is enabled', async () => {
+    process.env.AIVA_ENGINE_POLICY = 'keprix_preferred';
+    process.env.KEPRIX_SERVICE_TOKEN = 'test-keprix-token';
+    process.env.KEPRIX_API_BASE_URL = 'http://keprix.test/v1';
+    const { resolveAivaProductLlm, toProviderOverride } = await import('./product-llm-resolve.js');
+    const resolved = await resolveAivaProductLlm('ws-keprix');
+    expect(resolved.source).toBe('engine_policy');
+    expect(resolved.provider).toBe('keprix');
+    expect(toProviderOverride(resolved)).toEqual({ name: 'keprix', model: 'auto' });
   });
 });

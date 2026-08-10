@@ -778,11 +778,11 @@ export async function* processAivaMessageStreamDirect(
   if (messagingChannel) {
     setSessionConfig(sessionId, {
       fastModeUntilTurn: true,
-      thinkingLevel: 'off',
-      maxTurns: 6,
-      iterationBudget: 10,
-      blockExpensiveModels: true,
-      maxCompletionTokens: 700,
+      thinkingLevel: params.audiencePrincipal ? 'off' : 'low',
+      maxTurns: params.audiencePrincipal ? 6 : 12,
+      iterationBudget: params.audiencePrincipal ? 10 : 20,
+      blockExpensiveModels: params.audiencePrincipal,
+      maxCompletionTokens: params.audiencePrincipal ? 700 : 1500,
     });
   } else {
     setSessionConfig(sessionId, {
