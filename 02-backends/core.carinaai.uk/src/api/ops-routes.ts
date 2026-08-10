@@ -378,6 +378,141 @@ export function mountOpsRoutes(app: Express): void {
     }
   });
 
+  app.get('/api/ops/social-proof', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const { getSocialProofStore, inbox } = await import('../social-proof/runtime.js');
+      const store = getSocialProofStore();
+      const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+      const rows =
+        status === 'pending'
+          ? inbox(store)
+          : store.list({
+              status: status === 'approved' || status === 'rejected' ? status : undefined,
+              product: typeof req.query.product === 'string' ? req.query.product : undefined,
+            });
+      res.json({ ok: true, count: rows.length, testimonials: rows });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/ops/social-proof/collect', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const { collectSocialProof, runWeeklyCollection, getSocialProofStore, FIXTURES } = await import(
+        '../social-proof/runtime.js'
+      );
+      if (req.body?.weekly) {
+        const result = await runWeeklyCollection(getSocialProofStore(), {
+          force: req.body?.force === true,
+          fixturesPath: req.body?.fixtures ? FIXTURES : undefined,
+          product: 'carina',
+          githubRepo: process.env.CARINA_GITHUB_REPO || 'malike2356/carina-ai',
+        });
+        res.json({ ok: true, ...result });
+        return;
+      }
+      const results = await collectSocialProof({ forceFixtures: req.body?.fixtures === true });
+      res.json({ ok: true, results });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/ops/social-proof/manual', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const { getSocialProofStore, manualEntry } = await import('../social-proof/runtime.js');
+      const item = manualEntry(getSocialProofStore(), {
+        text: String(req.body?.text || ''),
+        author: String(req.body?.author || ''),
+        link: String(req.body?.link || req.body?.url || ''),
+        platform: req.body?.platform,
+        product: req.body?.product || 'carina',
+        tags: Array.isArray(req.body?.tags) ? req.body.tags.map(String) : undefined,
+      });
+      res.json({ ok: true, testimonial: item });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/ops/social-proof/:id/approve', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { getSocialProofStore, approve } = await import('../social-proof/runtime.js');
+    const row = approve(getSocialProofStore(), String(req.params.id));
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    res.json({ ok: true, testimonial: row });
+  });
+
+  app.post('/api/ops/social-proof/:id/reject', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { getSocialProofStore, reject } = await import('../social-proof/runtime.js');
+    const row = reject(getSocialProofStore(), String(req.params.id));
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    res.json({ ok: true, testimonial: row });
+  });
+
+  app.post('/api/ops/social-proof/:id/tag', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { getSocialProofStore, tag } = await import('../social-proof/runtime.js');
+    const tags = Array.isArray(req.body?.tags) ? req.body.tags.map(String) : String(req.body?.tag || '').split(',');
+    const row = tag(getSocialProofStore(), String(req.params.id), tags);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    res.json({ ok: true, testimonial: row });
+  });
+
+  app.post('/api/ops/social-proof/:id/assign', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { getSocialProofStore, assignProduct } = await import('../social-proof/runtime.js');
+    const row = assignProduct(getSocialProofStore(), String(req.params.id), String(req.body?.product || ''));
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    res.json({ ok: true, testimonial: row });
+  });
+
+  app.get('/api/ops/social-proof/render', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { renderCarinaProofHtml } = await import('../social-proof/runtime.js');
+    res.type('html').send(renderCarinaProofHtml());
+  });
+
   app.get('/api/ops/errors/search', async (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
       res.status(401).json({ error: 'Unauthorized' });
