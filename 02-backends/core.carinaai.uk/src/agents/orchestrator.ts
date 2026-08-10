@@ -461,6 +461,7 @@ export class CarinaOrchestrator {
         const provider = this.getProviderOverride()?.name ?? llm.current().name;
         const model = this.getProviderOverride()?.model
           ?? (typeof llm.currentModel === 'function' ? llm.currentModel() : '');
+        const executedProvider = llm.current().name;
         void recordTurn({
           sessionId: this.sessionId,
           profile: process.env.CARINA_PROFILE ?? getActiveProfileName() ?? 'default',
@@ -483,6 +484,11 @@ export class CarinaOrchestrator {
             responseLength: logState.responseText.length,
           }),
           error: logState.error,
+          correlationId: turnSpan.spanId,
+          enginePolicy: process.env.AIVA_ENGINE_POLICY ?? 'automatic',
+          selectedProvider: provider,
+          executedProvider,
+          fallbackReason: executedProvider !== provider ? 'provider_execution_differed_from_selected_route' : undefined,
         });
       } catch {
         // Telemetry must never affect chat turns.

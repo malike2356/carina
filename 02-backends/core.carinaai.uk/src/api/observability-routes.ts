@@ -16,6 +16,7 @@ import { listProviderObservations } from '../telemetry/provider-observation.js';
 import { listSubagentMetrics } from '../telemetry/subagent-metrics.js';
 import { getOtelStatus } from '../telemetry/otel.js';
 import { listCircuitBreakers } from '../lib/circuit-breaker.js';
+import { getAivaRoutingControls, updateAivaRoutingControls } from '../ops/aiva-routing-controls.js';
 
 function parseLimit(raw: unknown, fallback = 50, max = 500): number {
   const n = Number(raw);
@@ -24,6 +25,22 @@ function parseLimit(raw: unknown, fallback = 50, max = 500): number {
 }
 
 export function mountObservabilityRoutes(app: Express): void {
+  app.get('/api/ops/aiva/routing-controls', (req: Request, res: Response) => {
+    if (!authorizeOps(req)) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    res.json(getAivaRoutingControls());
+  });
+
+  app.post('/api/ops/aiva/routing-controls', (req: Request, res: Response) => {
+    if (!authorizeOps(req)) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    const body = req.body ?? {};
+    res.json(updateAivaRoutingControls({
+      pinnedProvider: typeof body.pinnedProvider === 'string' ? body.pinnedProvider.trim() || undefined : undefined,
+      disabledProviders: Array.isArray(body.disabledProviders) ? body.disabledProviders.filter((value: unknown): value is string => typeof value === 'string') : undefined,
+      readOnly: typeof body.readOnly === 'boolean' ? body.readOnly : undefined,
+      mutationsPaused: typeof body.mutationsPaused === 'boolean' ? body.mutationsPaused : undefined,
+      killSwitch: typeof body.killSwitch === 'boolean' ? body.killSwitch : undefined,
+    }));
+  });
   app.get('/api/ops/circuit-breakers', (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
       res.status(401).json({ error: 'Unauthorized' });

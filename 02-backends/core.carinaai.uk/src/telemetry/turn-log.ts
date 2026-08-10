@@ -29,6 +29,11 @@ export interface TurnLogEntry {
   responseLength: number;
   bucket: TurnBucket;
   error?: string;
+  correlationId?: string;
+  enginePolicy?: string;
+  selectedProvider?: string;
+  executedProvider?: string;
+  fallbackReason?: string;
 }
 
 export interface TurnLogQuery {

@@ -7,8 +7,10 @@ import {
 import type { ProviderOverride } from '../brain/llm.js';
 import { PROVIDER_MAP, isProviderConfigured, providerModel } from '../brain/provider-registry.js';
 import { probeKeprixHealth } from '../integrations/keprix-health.js';
+import { getAivaRoutingControls } from '../ops/aiva-routing-controls.js';
 
 export type AivaLlmLane = 'trial' | 'paid' | 'platform' | 'byok';
+export type AivaEnginePolicy = 'keprix_preferred' | 'carina_preferred' | 'pinned_provider' | 'automatic';
 
 export type ResolvedProductLlm = {
   lane: AivaLlmLane;
@@ -28,6 +30,12 @@ const BYOK_DEFAULT_MODELS: Record<string, string> = {
   groq: 'llama-3.3-70b-versatile',
   openrouter: 'openrouter/auto',
 };
+
+export function readAivaEnginePolicy(env: NodeJS.ProcessEnv = process.env): AivaEnginePolicy {
+  const raw = String(env.AIVA_ENGINE_POLICY ?? '').trim().toLowerCase();
+  if (raw === 'keprix_preferred' || raw === 'carina_preferred' || raw === 'pinned_provider') return raw;
+  return 'automatic';
+}
 
 /**
  * Paid lane: active/past_due subscription on a non-trial plan.
@@ -92,15 +100,52 @@ export async function resolveWorkspaceByokLlm(
 }
 
 export async function resolveAivaProductLlm(workspaceId: string): Promise<ResolvedProductLlm> {
-  const enginePolicy = (process.env.AIVA_ENGINE_POLICY ?? '').trim().toLowerCase();
+  const enginePolicy = readAivaEnginePolicy();
+  const controls = getAivaRoutingControls();
+  if (controls.killSwitch) {
+    return { lane: 'platform', provider: 'none', model: '', source: 'engine_policy', reason: 'Aiva routing kill switch is active' };
+  }
   const keprix = PROVIDER_MAP.keprix;
-  if ((enginePolicy === 'keprix_preferred' || process.env.KEPRIX_PREFERRED === 'true') && keprix && isProviderConfigured(keprix) && (await probeKeprixHealth()).healthy) {
+  const keprixPreferred = enginePolicy === 'keprix_preferred' || process.env.KEPRIX_PREFERRED === 'true';
+  if (keprixPreferred && !controls.disabledProviders.includes('keprix') && keprix && isProviderConfigured(keprix) && (await probeKeprixHealth()).healthy) {
     return {
       lane: 'platform',
       provider: 'keprix',
       model: providerModel(keprix),
       source: 'engine_policy',
       reason: 'Keprix preferred engine policy is enabled and the Keprix provider is configured',
+    };
+  }
+  if (enginePolicy === 'pinned_provider') {
+    const pinnedProvider = String(process.env.AIVA_PINNED_PROVIDER ?? '').trim().toLowerCase();
+    const pinned = PROVIDER_MAP[pinnedProvider];
+    if (pinned && isProviderConfigured(pinned)) {
+      if (pinnedProvider === 'keprix' && !(await probeKeprixHealth()).healthy) {
+        return {
+          lane: 'platform',
+          provider: pinnedProvider,
+          model: providerModel(pinned),
+          source: 'engine_policy',
+          reason: 'Pinned Keprix provider is unavailable; turn must be surfaced as unavailable rather than silently downgraded',
+        };
+      }
+      return {
+        lane: 'platform',
+        provider: pinnedProvider,
+        model: String(process.env.AIVA_PINNED_MODEL ?? '').trim() || providerModel(pinned),
+        source: 'engine_policy',
+        reason: `Pinned provider policy selected ${pinnedProvider}`,
+      };
+    }
+  }
+  if (enginePolicy === 'carina_preferred') {
+    const provider = String(process.env.DEFAULT_PROVIDER ?? '').trim().toLowerCase() || 'deepseek';
+    return {
+      lane: 'platform',
+      provider,
+      model: String(process.env.DEFAULT_MODEL ?? '').trim(),
+      source: 'engine_policy',
+      reason: 'Carina preferred engine policy selected the platform provider',
     };
   }
   const byok = await resolveWorkspaceByokLlm(workspaceId);

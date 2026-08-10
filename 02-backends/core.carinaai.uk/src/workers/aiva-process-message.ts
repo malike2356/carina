@@ -53,6 +53,7 @@ import {
 } from '../agents/worker-pool.js';
 import { resolveWorkspacePlanTier } from '../billing/aiva-plan-gates.js';
 import { setSessionConfig } from '../config/session-config.js';
+import { aivaQualityProfile, aivaQualitySettings } from './aiva-quality-profiles.js';
 import {
   checkAivaRequestLimits,
   estimateTokensFromText,
@@ -774,25 +775,24 @@ export async function* processAivaMessageStreamDirect(
   }
   await registerProductToolAdapters(sessionId);
 
-  // Cap tool rounds / thinking so Telegram and web Aiva stay snappy.
-  if (messagingChannel) {
-    setSessionConfig(sessionId, {
-      fastModeUntilTurn: true,
-      thinkingLevel: params.audiencePrincipal ? 'off' : 'low',
-      maxTurns: params.audiencePrincipal ? 6 : 12,
-      iterationBudget: params.audiencePrincipal ? 10 : 20,
-      blockExpensiveModels: params.audiencePrincipal,
-      maxCompletionTokens: params.audiencePrincipal ? 700 : 1500,
-    });
-  } else {
-    setSessionConfig(sessionId, {
-      fastModeUntilTurn: true,
-      thinkingLevel: 'off',
-      maxTurns: 10,
-      iterationBudget: 16,
-      maxCompletionTokens: 1500,
-    });
-  }
+  // Presentation channel may be concise, but quality limits are selected by task profile.
+  const normalizedMessage = message.content.trim().toLowerCase();
+  const simpleTurn = /^(hi|hello|hey|thanks|thank you|who are you|how are you)\b/.test(normalizedMessage)
+    && normalizedMessage.length < 80;
+  const deepTask = /\b(create|update|send|email|calendar|book|crm|outreach|document|drive|research|campaign|sequence|lead)\b/.test(normalizedMessage);
+  const quality = aivaQualitySettings(aivaQualityProfile({
+    audiencePrincipal: params.audiencePrincipal,
+    simpleTurn,
+    deepTask,
+  }));
+  setSessionConfig(sessionId, {
+    fastModeUntilTurn: simpleTurn,
+    thinkingLevel: quality.thinkingLevel,
+    maxTurns: quality.maxTurns,
+    iterationBudget: quality.iterationBudget,
+    blockExpensiveModels: quality.blockExpensiveModels,
+    maxCompletionTokens: quality.maxCompletionTokens,
+  });
 
   // AI Control product LLM engine: force trial/paid provider+model when configured.
   try {
