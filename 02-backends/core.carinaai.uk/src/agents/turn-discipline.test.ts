@@ -89,6 +89,21 @@ describe('getRecentToolFailures', () => {
       { toolName: 'shell-exec', summary: 'exit 1' },
     ]);
   });
+
+  it('extracts the reason from structured tool errors', () => {
+    expect(getRecentToolFailures([
+      { role: 'user', content: 'check email', timestamp: new Date() },
+      {
+        role: 'tool_result',
+        content: '',
+        toolName: 'gmail-list',
+        result: { ok: false, error: { code: 'missing_grant', message: 'Gmail is not connected' } },
+        timestamp: new Date(),
+      },
+    ])).toEqual([
+      { toolName: 'gmail-list', summary: 'missing_grant: Gmail is not connected' },
+    ]);
+  });
 });
 
 describe('silent turn prevention', () => {
@@ -96,6 +111,12 @@ describe('silent turn prevention', () => {
     expect(isSilentOrWeakResponse('')).toBe(true);
     expect(isSilentOrWeakResponse('ok')).toBe(true);
     expect(isSilentOrWeakResponse('Tests failed with exit code 1. Retrying with verbose output.')).toBe(false);
+  });
+
+  it('treats generic operation failures as weak so the actual reason is surfaced', () => {
+    expect(isSilentOrWeakResponse('The operation failed and was not completed.')).toBe(true);
+    expect(isSilentOrWeakResponse('The operation could not be completed.')).toBe(true);
+    expect(isSilentOrWeakResponse('Gmail failed: the account is not connected.')).toBe(false);
   });
 
   it('builds a nudge that demands follow-up', () => {

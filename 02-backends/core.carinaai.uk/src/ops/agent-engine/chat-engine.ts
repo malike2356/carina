@@ -133,15 +133,15 @@ export function shouldRouteChatThroughKeprix(workspaceId?: string | null): boole
 }
 
 /**
- * Keprix chat primary currently invokes with empty tools/carina_tools.
- * Tool-backed work (CRM leads, Companies House, Gmail, etc.) must stay on Carina
- * until the HTTP tool bridge is populated. Otherwise the model invents results or
- * dumps raw tool-call XML into chat.
+ * Gmail and other connected-account work stays on the canonical Carina product-tool
+ * path. This is the path that resolves the workspace grant and OAuth account shown
+ * in Aiva Tools. The standalone Keprix Google Workspace connector is not an Aiva
+ * fallback, because it has a separate credential and grant model.
  */
 export function messageNeedsCarinaNativeTools(message: string): boolean {
   const text = String(message ?? '');
   if (!text.trim()) return false;
-  return /\b(leads?|prospects?|crm|outreach|companies[-\s]?house|company number|ingest|lead list|follow[- ]?up|find (me )?(?:\d+\s+)?(?:businesses|companies|customers|prospects)|generate .{0,40}leads?|web search|tavily|gmail|google (?:drive|calendar|contacts)|calendar sync|soft wall|approvals?)\b/i
+  return /\b(leads?|prospects?|crm|outreach|companies[-\s]?house|company number|ingest|lead list|follow[- ]?up|find|look up|search|contacts?|person|people|email|emails|mail|inbox|gmail|find (me )?(?:\d+\s+)?(?:businesses|companies|customers|prospects)|generate .{0,40}leads?|web search|tavily|google (?:drive|calendar|contacts)|calendar sync|soft wall|approvals?)\b/i
     .test(text);
 }
 

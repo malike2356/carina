@@ -58,7 +58,16 @@ export function isToolResultFailure(result: unknown): boolean {
 export function failureSummary(result: unknown): string {
   const record = asRecord(result);
   if (!record) return String(result ?? 'unknown error');
-  if (record.error) return String(record.error);
+  if (record.error) {
+    const error = asRecord(record.error);
+    if (error) {
+      const code = String(error.code ?? '').trim();
+      const message = String(error.message ?? error.detail ?? '').trim();
+      const nested = [code, message].filter(Boolean).join(': ');
+      if (nested) return nested;
+    }
+    return String(record.error);
+  }
   if (record.message) return String(record.message);
   if (record.reason) return String(record.reason);
   return JSON.stringify(record).slice(0, 200);
@@ -85,6 +94,9 @@ export function augmentFailedToolResult(result: unknown, toolName: string): unkn
 export function isSilentOrWeakResponse(text: string): boolean {
   const trimmed = text.trim();
   if (!trimmed) return true;
+  if (/\b(?:the operation|the requested operation)\s+(?:failed|could not be completed)|operation was not completed|tool failed\b/i.test(trimmed)) {
+    return true;
+  }
   return trimmed.length < 24;
 }
 

@@ -94,6 +94,8 @@ describe('agent-engine chat routing (CAS-06)', () => {
       'find me 10 businesses in Portsmouth and save leads to CRM',
     )).toBe(true);
     expect(messageNeedsCarinaNativeTools('search Companies House for bakeries')).toBe(true);
+    expect(messageNeedsCarinaNativeTools('What is the most recent email I have received?')).toBe(true);
+    expect(messageNeedsCarinaNativeTools('find Oluwatobi Fajana')).toBe(true);
     expect(messageNeedsCarinaNativeTools('hi, how are you?')).toBe(false);
   });
 
