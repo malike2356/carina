@@ -513,6 +513,125 @@ export function mountOpsRoutes(app: Express): void {
     res.type('html').send(renderCarinaProofHtml());
   });
 
+  app.get('/api/ops/status', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { getStatusStore, buildStatusPageModel, notificationLog } = await import('../status/runtime.js');
+    res.json({
+      ok: true,
+      snapshot: buildStatusPageModel(getStatusStore()),
+      notifications: notificationLog.records.slice(0, 50),
+    });
+  });
+
+  app.get('/api/ops/status/public-snapshot', async (_req: Request, res: Response) => {
+    const { getStatusStore } = await import('../status/runtime.js');
+    res.json({ ok: true, snapshot: getStatusStore().snapshot() });
+  });
+
+  app.post('/api/ops/status/tick', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const { tickStatusHealth, notifyIncidentDetected } = await import('../status/runtime.js');
+      const result = await tickStatusHealth();
+      if (result.created && req.body?.notify) {
+        await notifyIncidentDetected(result.created.id, {
+          activeUsers: Array.isArray(req.body.activeUsers) ? req.body.activeUsers.map(String) : [],
+          subscribers: Array.isArray(req.body.subscribers) ? req.body.subscribers.map(String) : [],
+        });
+      }
+      res.json({ ok: true, ...result, created: result.created, resolved: result.resolved });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/ops/status/incidents', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { getStatusStore, manualCreateIncident } = await import('../status/runtime.js');
+    const incident = manualCreateIncident(getStatusStore(), {
+      title: String(req.body?.title || 'Manual incident'),
+      affectedServices: Array.isArray(req.body?.affectedServices)
+        ? req.body.affectedServices.map(String)
+        : [],
+      severity: req.body?.severity,
+      message: req.body?.message ? String(req.body.message) : undefined,
+    });
+    res.json({ ok: true, incident });
+  });
+
+  app.post('/api/ops/status/incidents/:id/update', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { getStatusStore, manualUpdateIncident } = await import('../status/runtime.js');
+    const incident = manualUpdateIncident(
+      getStatusStore(),
+      String(req.params.id),
+      String(req.body?.phase || 'investigating') as
+        | 'investigating'
+        | 'identified'
+        | 'monitoring'
+        | 'resolved',
+      String(req.body?.message || ''),
+    );
+    if (!incident) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    res.json({ ok: true, incident });
+  });
+
+  app.post('/api/ops/status/maintenance', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const { getStatusStore, scheduleMaintenance } = await import('../status/runtime.js');
+      const window = scheduleMaintenance(getStatusStore(), {
+        title: String(req.body?.title || ''),
+        description: String(req.body?.description || ''),
+        affectedServices: Array.isArray(req.body?.affectedServices)
+          ? req.body.affectedServices.map(String)
+          : [],
+        startsAt: String(req.body?.startsAt || ''),
+        endsAt: String(req.body?.endsAt || ''),
+        emergency: Boolean(req.body?.emergency),
+      });
+      res.json({ ok: true, maintenance: window });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.get('/api/ops/status/maintenance', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { getStatusStore, maintenanceCalendar } = await import('../status/runtime.js');
+    res.json({ ok: true, maintenance: maintenanceCalendar(getStatusStore()) });
+  });
+
+  app.get('/api/ops/status/render', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { renderCarinaStatusHtml } = await import('../status/runtime.js');
+    res.type('html').send(renderCarinaStatusHtml());
+  });
+
   app.get('/api/ops/errors/search', async (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
       res.status(401).json({ error: 'Unauthorized' });
