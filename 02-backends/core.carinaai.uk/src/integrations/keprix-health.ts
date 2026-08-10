@@ -29,7 +29,9 @@ export async function probeKeprixHealth(force = false): Promise<KeprixHealth> {
   }
   const started = Date.now();
   try {
-    const response = await keprixApiFetch('/health', { signal: AbortSignal.timeout(2_500) });
+    // The public Keprix origin exposes health under /api while its
+    // OpenAI-compatible northbound API remains rooted at /v1.
+    const response = await keprixApiFetch('/api/health', { signal: AbortSignal.timeout(2_500) });
     const value: KeprixHealth = {
       healthy: response.ok,
       checkedAt: new Date().toISOString(),
