@@ -45,6 +45,12 @@ describe('mandatory-tools', () => {
     expect(tools).toContain('email-send');
   });
 
+  it('routes latest-email requests to Gmail read tools', () => {
+    const tools = primaryMandatoryTools('What is the most recent email I have received?');
+    expect(tools).toContain('gmail-list');
+    expect(tools).toContain('gmail-get');
+  });
+
   it('matches draft-for-approval email requests to workspace email draft tool', () => {
     const tools = primaryMandatoryTools(
       'can you email him if draft an email for me to approve and or send from the workspace?',

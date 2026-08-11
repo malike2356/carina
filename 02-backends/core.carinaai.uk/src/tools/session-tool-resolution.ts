@@ -140,10 +140,14 @@ export async function resolveSessionTools(opts: {
         'workspace-inventory',
       ]
       : [];
+    // Do not force every registered workspace adapter into every model call.
+    // Aiva registers many tools for the session, but sending the whole catalog
+    // can exceed provider function-calling limits and make otherwise healthy
+    // providers fail. Mandatory routing keeps the tools required by this turn.
     const alwaysInclude = [...new Set([
       ...ALWAYS_ON_TOOLS,
       ...mandatoryTools,
-      ...sessionToolNames,
+      ...sessionToolNames.filter((name) => mandatoryTools.includes(name)),
       ...aivaCoreTools,
     ])];
     tools = await selectToolsByEmbedding({

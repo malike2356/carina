@@ -180,6 +180,7 @@ export const MANDATORY_TOOL_RULES: MandatoryToolRule[] = [
       /\bfetch\s+from\b/i,
       /\bget\s+response\s+from\b/i,
       /\blast\s+\d+\s+emails?\b/i,
+      /\b(most\s+recent|latest|newest|last)\s+(e-?mail|mail|message)\b/i,
       /\b(my|the)\s+(inbox|emails?)\b/i,
       /\bread\s+(my\s+)?(email|mail|gmail)\b/i,
       /\bgoogle\s+drive\b/i,
