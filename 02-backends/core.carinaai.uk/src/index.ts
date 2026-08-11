@@ -138,6 +138,7 @@ async function main(): Promise<void> {
       try {
         const { applyLlmRotationSettingsFromDb } = await import('./ops/llm-rotation-platform.js');
         const { llm } = await import('./brain/llm.js');
+        llm.refreshPlugins();
         const saved = await applyLlmRotationSettingsFromDb();
         const provider = (process.env.DEFAULT_PROVIDER || '').trim().toLowerCase();
         const model = (process.env.DEFAULT_MODEL || '').trim() || undefined;

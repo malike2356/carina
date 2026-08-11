@@ -498,6 +498,18 @@ export class LLMRouter {
         if (provider) this.providers.set(def.name, provider);
       }
     }
+    // Settings can be hydrated after this singleton is imported. If the
+    // initial environment was empty, select the newly configured provider now.
+    if (!this.active && this.providers.size > 0) {
+      const resolved = resolveInitialActiveProvider({
+        configuredNames: [...this.providers.keys()],
+        definitions: PROVIDER_DEFINITIONS,
+        preferred: process.env.DEFAULT_PROVIDER ?? config.carina.defaultProvider,
+        envPreset: process.env.CARINA_LLM_PRESET,
+      });
+      this.active = resolved.active ?? '';
+      if (resolved.preset) this.preset = resolved.preset;
+    }
   }
 
   getPreset(): string | undefined {

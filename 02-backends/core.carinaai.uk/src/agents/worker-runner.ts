@@ -26,6 +26,8 @@ async function ensureBootstrapped(): Promise<void> {
   // otherwise Telegram and other channels can see an empty provider chain.
   const { loadSettingsFromDb } = await import('../config/settings-loader.js');
   await loadSettingsFromDb(config.config.workspaceId);
+  const { llm } = await import('../brain/llm.js');
+  llm.refreshPlugins();
   const { initMemoryBackend } = await import('../memory/backends/index.js');
   initMemoryBackend();
   const { initRouter } = await import('../gateway/router.js');
