@@ -21,6 +21,11 @@ async function ensureBootstrapped(): Promise<void> {
   if (bootstrapped) return;
   const { loadCarinaEnv } = await import('../config/load-env.js');
   loadCarinaEnv();
+  // The main process loads provider settings from the workspace database at
+  // startup. Isolated Aiva workers must do the same before creating a router,
+  // otherwise Telegram and other channels can see an empty provider chain.
+  const { loadSettingsFromDb } = await import('../config/settings-loader.js');
+  await loadSettingsFromDb(config.config.workspaceId);
   const { initMemoryBackend } = await import('../memory/backends/index.js');
   initMemoryBackend();
   const { initRouter } = await import('../gateway/router.js');
