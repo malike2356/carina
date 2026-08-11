@@ -59,10 +59,13 @@ port.on('message', (msg: WorkerInboundMessage) => {
       const result = await runtime.handle(msg);
       port.postMessage({ id: msg.id, ok: true, result } satisfies WorkerResponse);
     } catch (err) {
+      const error = err instanceof Error
+        ? (err.stack ?? err.message)
+        : String(err);
       port.postMessage({
         id: msg.id,
         ok: false,
-        error: err instanceof Error ? err.message : String(err),
+        error,
       } satisfies WorkerResponse);
     }
   })();

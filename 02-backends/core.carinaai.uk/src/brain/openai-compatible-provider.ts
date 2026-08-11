@@ -138,6 +138,9 @@ export class OpenAICompatibleProvider implements LLMProvider {
         throw err;
       }
       recordProviderCacheHit(this.name, cacheKey);
+      if (!response || !Array.isArray(response.choices) || response.choices.length === 0) {
+        throw new Error(`${this.name} returned no assistant choices`);
+      }
       const msg = response.choices[0]?.message as
         | { content?: string | null; reasoning_content?: string | null; tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] }
         | undefined;
