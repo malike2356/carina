@@ -82,6 +82,18 @@ describe('provider fallback chain', () => {
     expect(chain).toContain('anthropic');
   });
 
+  it('retries configured providers when all candidates are temporarily unhealthy', () => {
+    markProviderUnhealthy('deepseek', 'down');
+    markProviderUnhealthy('openai', 'down');
+    const chain = resolveProviderFallbackChain({
+      activeProvider: 'deepseek',
+      configuredNames: ['deepseek', 'openai'],
+      definitions: PROVIDER_DEFINITIONS,
+      envOverride: ['deepseek', 'openai'],
+    });
+    expect(chain).toEqual(['deepseek', 'openai']);
+  });
+
   it('uses registry fallback order when env override is empty', () => {
     const chain = resolveProviderFallbackChain({
       activeProvider: 'anthropic',

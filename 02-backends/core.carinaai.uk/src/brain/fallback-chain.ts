@@ -75,5 +75,11 @@ export function resolveProviderFallbackChain(opts: {
       : fallbackOrderNames();
 
   const merged = mergeFallbackOrder(active, base);
-  return merged.filter((name) => configured.has(name) && isProviderAvailable(name));
+  const available = merged.filter((name) => configured.has(name) && isProviderAvailable(name));
+  if (available.length > 0) return available;
+
+  // A transient provider failure must not strand every following turn. The
+  // health cache is a routing preference, not a permanent circuit breaker.
+  // Retry the configured chain when every candidate is temporarily unhealthy.
+  return merged.filter((name) => configured.has(name));
 }
