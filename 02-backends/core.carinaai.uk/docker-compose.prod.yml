@@ -22,6 +22,7 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      KEPRIX_MODEL: ${KEPRIX_MODEL:-deepseek-v4-pro}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       # Telegram is supplied from the VPS secret environment at deploy time.
       # Keep these explicit so a persisted container bootstrap file cannot
