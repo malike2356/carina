@@ -14,6 +14,13 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/deploy-lib.sh"
 
 cd "${ROOT_DIR}"
 
+# Keep the runtime env file aligned with the VPS secret store before a release.
+# This is intentionally done at deploy time so channel credentials such as
+# Telegram are never committed to the product tree or baked into source.
+if [[ -f "${ROOT_DIR}/.env.docker.runtime" && -f "${ROOT_DIR}/docker/scripts/sync-docker-env.py" ]]; then
+  python3 "${ROOT_DIR}/docker/scripts/sync-docker-env.py"
+fi
+
 ALL_SERVICES=(carina-web carina-hub carina-ops carina-cloud carina-admin)
 declare -A IMAGE_REPOSITORIES=(
   [carina-web]="carina-release/carina-web"

@@ -81,7 +81,7 @@ export function AivaWorkerChatPanel({
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages.length, busy, conversationAddon]);
+  }, [messages, busy, conversationAddon]);
 
   useEffect(() => () => cancelRecording(), [cancelRecording]);
 
@@ -138,7 +138,7 @@ export function AivaWorkerChatPanel({
       <div
         ref={scrollRef}
         className={cn(
-          'flex-1 space-y-4 overflow-y-auto',
+        'min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain',
           workspace ? 'px-4 py-5 sm:px-8 lg:px-10 xl:px-14' : 'px-4 py-4 sm:px-6 lg:px-8',
         )}
       >
@@ -206,7 +206,7 @@ export function AivaWorkerChatPanel({
 
       <footer
         className={cn(
-          'shrink-0 border-t border-border/80 bg-base',
+          'sticky bottom-0 z-10 shrink-0 border-t border-border/80 bg-base',
           workspace ? 'px-4 py-3 sm:px-8 lg:px-10 xl:px-14' : 'px-3 py-3',
         )}
       >

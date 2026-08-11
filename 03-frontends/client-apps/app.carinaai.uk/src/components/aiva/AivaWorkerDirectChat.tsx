@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Menu, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { ConversationalChannelSetupCard } from '@/components/aiva/ConversationalChannelSetupCard';
 import {
@@ -76,6 +76,7 @@ export function AivaWorkerDirectChat({
     csv: string;
     rows: number;
   } | null>(null);
+  const threadLoadRef = useRef(0);
 
   const loadConversations = useCallback(async (preferredId?: string) => {
     const res = await fetch(`/api/aiva/workers/${worker.id}/direct-conversations`);
@@ -137,6 +138,7 @@ export function AivaWorkerDirectChat({
   }, [createConversation, loadConversations, readOnly]);
 
   const loadThread = useCallback(async (conversation: AivaConversation) => {
+    const loadId = ++threadLoadRef.current;
     setLoading(true);
     setError('');
     try {
@@ -147,7 +149,7 @@ export function AivaWorkerDirectChat({
         'Could not load chat',
       );
       if (!res.ok) throw new Error(data.error ?? 'Could not load chat');
-      setMessages(data.messages ?? []);
+      if (loadId === threadLoadRef.current) setMessages(data.messages ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load chat');
     } finally {
@@ -273,11 +275,23 @@ export function AivaWorkerDirectChat({
       return;
     }
 
+    const attachment = pendingAttachment;
+    const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const optimisticMessage: AivaEmployeeMessage = {
+      id: optimisticId,
+      threadId: activeConversation.id,
+      workerId: worker.id,
+      workspaceId: worker.workspaceId,
+      sender: 'user',
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    threadLoadRef.current += 1;
+    setMessages((current) => [...current, optimisticMessage]);
     setBusy(true);
     setError('');
     setSetupNotice('');
     setMessage('');
-    const attachment = pendingAttachment;
     setPendingAttachment(null);
     try {
       const res = await fetch(`/api/aiva/workers/${worker.id}/direct-messages`, {
@@ -298,12 +312,13 @@ export function AivaWorkerDirectChat({
       }>(res, 'Could not send message');
       if (!res.ok) throw new Error(data.error ?? 'Could not send message');
       setMessages((current) => [
-        ...current,
-        ...(data.userMessage ? [data.userMessage] : []),
+        ...current.filter((item) => item.id !== optimisticId),
+        ...(data.userMessage ? [data.userMessage] : [optimisticMessage]),
         ...(data.employeeMessage ? [data.employeeMessage] : []),
       ]);
       await loadConversations(activeConversation.id);
     } catch (err) {
+      setMessages((current) => current.filter((item) => item.id !== optimisticId));
       setMessage(content);
       if (attachment) setPendingAttachment(attachment);
       setError(err instanceof Error ? err.message : 'Could not send message');
@@ -555,7 +570,6 @@ export function AivaWorkerDirectChat({
               ) : null}
             </div>
           }
-          headerBanner={null}
           conversationAddon={
             <>
               {worker.workerConfig?.privacy?.incognito ? (

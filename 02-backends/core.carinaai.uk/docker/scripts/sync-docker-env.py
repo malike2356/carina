@@ -124,6 +124,21 @@ def channel_credential_key_value(current: dict[str, str]) -> str | None:
     return None
 
 
+def channel_runtime_values(current: dict[str, str]) -> dict[str, str]:
+    """Fill channel runtime settings from the private production secret file."""
+    merged: dict[str, str] = {}
+    for candidate in CHANNEL_CREDENTIAL_SECRET_CANDIDATES:
+        merged.update(parse_env_file(candidate))
+    out: dict[str, str] = {}
+    for key in ('TELEGRAM_BOT_TOKEN', 'TELEGRAM_WEBHOOK_URL', 'TELEGRAM_WEBHOOK_SECRET'):
+        if current.get(key, '').strip():
+            continue
+        value = merged.get(key, '').strip()
+        if value:
+            out[key] = value
+    return out
+
+
 def main() -> None:
     if not ENV_PATH.exists():
         raise SystemExit(f'missing {ENV_PATH}; copy from .env first')
@@ -178,6 +193,12 @@ def main() -> None:
         out.append(f'CHANNEL_CREDENTIAL_KEY={channel_key}')
         seen.add('CHANNEL_CREDENTIAL_KEY')
         current['CHANNEL_CREDENTIAL_KEY'] = channel_key
+
+    for key, value in channel_runtime_values(current).items():
+        out = [line for line in out if not line.startswith(f'{key}=')]
+        out.append(f'{key}={value}')
+        seen.add(key)
+        current[key] = value
 
     final_vals: dict[str, str] = {}
     for line in out:

@@ -544,17 +544,40 @@ export async function sendEmployeeMessage(input: {
     });
   }
 
-  const reply = await processAivaMessage({
-    workerId: input.workerId,
-    workspaceId: input.workspaceId,
-    userMessage: agentContent,
-    channel: 'web',
-    contactId,
-    contactName: input.contactName ?? 'Workspace user',
-    threadId,
-    isWebPreviewSession: true,
-    apiTokenId: input.apiTokenId,
-  });
+  let reply = '';
+  try {
+    reply = await processAivaMessage({
+      workerId: input.workerId,
+      workspaceId: input.workspaceId,
+      userMessage: agentContent,
+      channel: 'web',
+      contactId,
+      contactName: input.contactName ?? 'Workspace user',
+      threadId,
+      isWebPreviewSession: true,
+      apiTokenId: input.apiTokenId,
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error('[aiva] direct message failed', {
+      workspaceId: input.workspaceId,
+      workerId: input.workerId,
+      contactId,
+      reason,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    reply = `I could not complete that request. Technical reason: ${reason}`;
+    if (!incognito) {
+      await recordEmployeeEvent({
+        workspaceId: input.workspaceId,
+        workerId: input.workerId,
+        threadId,
+        eventType: 'message_failed',
+        summary: 'Aiva direct message failed',
+        metadata: { reason },
+      });
+    }
+  }
 
   const employeeMessage = incognito
     ? ephemeralMessage('employee', reply || aivaEmptyReplyFallback(agentContent))
