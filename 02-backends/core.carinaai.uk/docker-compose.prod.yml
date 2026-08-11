@@ -23,6 +23,12 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Telegram is supplied from the VPS secret environment at deploy time.
+      # Keep these explicit so a persisted container bootstrap file cannot
+      # replace the live channel credentials with empty values.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
       # TAVILY / BRAVE / SEARXNG come from .env.docker.runtime via env_file.
       # Do not interpolate them here; empty host values blank the env_file keys.
       CARINA_SPLIT_GATEWAY: "false"
