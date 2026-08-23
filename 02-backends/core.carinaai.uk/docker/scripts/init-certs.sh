@@ -21,6 +21,7 @@ DOMAINS=(
   "hireaiva.co.uk"
   "www.hireaiva.co.uk"
   "admin.hireaiva.co.uk"
+  "ops.hireaiva.co.uk"
 )
 
 cd "${ROOT_DIR}"
