@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
-import { authClient } from '@/lib/auth-client';
+import { signOutAndRedirect } from '@/lib/auth-client';
 import { LauncherOrbitalTimeline } from '@/components/launcher/LauncherOrbitalTimeline';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useTerminalAccess } from '@/hooks/useTerminalAccess';
@@ -560,7 +560,7 @@ export function LauncherExpanded({
         </div>
         <div className="ml-auto px-4">
           <button type="button" className="text-[9.5px] hover:underline bg-transparent border-none cursor-pointer p-0" style={{ color: '#2a4a6a' }}
-            onClick={() => authClient.signOut().then(() => { window.location.href = '/login'; })}>
+            onClick={() => void signOutAndRedirect()}>
             Sign out
           </button>
         </div>

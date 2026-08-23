@@ -12,7 +12,7 @@ import {
   User,
   type LucideIcon,
 } from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
+import { signOutAndRedirect } from '@/lib/auth-client';
 import {
   AIVA_HOME_ACTION,
   AIVA_PRIMARY_NAV,
@@ -114,8 +114,7 @@ export function AivaSidebar({
 
   async function signOut() {
     setMenuOpen(false);
-    await authClient.signOut();
-    window.location.href = '/login';
+    await signOutAndRedirect();
   }
 
   function goTo(href: string) {

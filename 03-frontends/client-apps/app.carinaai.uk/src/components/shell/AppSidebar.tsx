@@ -84,7 +84,7 @@ import { hrefToWindowId, preferWindowOverlay } from '@/lib/window-manager/defini
 import { useOptionalWindowManager } from '@/lib/window-manager/WindowManagerContext';
 import { AivaSidebar } from '@/components/shell/AivaSidebar';
 import { BrandMark } from '@/components/shell/BrandMark';
-import { authClient } from '@/lib/auth-client';
+import { signOutAndRedirect } from '@/lib/auth-client';
 import { useMobileNav } from '@/hooks/useMobileNav';
 
 interface Session {
@@ -279,8 +279,7 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
   }
 
   async function signOut() {
-    await authClient.signOut();
-    window.location.href = '/login';
+    await signOutAndRedirect();
   }
 
   const initials = (userName || userEmail).slice(0, 2).toUpperCase();

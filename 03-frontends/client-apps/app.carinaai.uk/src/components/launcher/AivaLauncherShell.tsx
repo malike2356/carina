@@ -15,7 +15,7 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
+import { signOutAndRedirect } from '@/lib/auth-client';
 import { useGreeting } from '@/hooks/useRelativeTimeLabel';
 import type { LauncherData } from '@/lib/launcher-data';
 import type { AivaWorker } from '@/lib/aiva-types';
@@ -249,10 +249,10 @@ export function AivaLauncherShell({ userName }: LauncherData) {
         <button
           type="button"
           className="ml-auto text-sm text-[#c5d9e4] hover:text-[#f4f8fb]"
-          onClick={() => authClient.signOut().then(() => { window.location.href = '/login'; })}
-        >
-          Sign out
-        </button>
+          onClick={() => void signOutAndRedirect()}
+          >
+            Sign out
+          </button>
       </header>
 
       <main
@@ -421,7 +421,7 @@ export function AivaLauncherShell({ userName }: LauncherData) {
           <button
             type="button"
             className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-red-300 hover:bg-white/8"
-            onClick={() => authClient.signOut().then(() => { window.location.href = '/login'; })}
+            onClick={() => void signOutAndRedirect()}
           >
             Sign out
           </button>

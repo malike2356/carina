@@ -1,7 +1,7 @@
 'use client';
 
 import { Lock, RefreshCw, Shield } from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
+import { signOutAndRedirect } from '@/lib/auth-client';
 
 interface Props {
   scoutPaired?: boolean;
@@ -31,7 +31,7 @@ export function LauncherStatusBar({ scoutPaired = false }: Props) {
           type="button"
           className="text-[11px] hover:underline bg-transparent border-none cursor-pointer p-0"
           style={{ color: '#6b8aaa' }}
-          onClick={() => authClient.signOut().then(() => { window.location.href = '/login'; })}
+          onClick={() => void signOutAndRedirect()}
         >
           Sign out
         </button>

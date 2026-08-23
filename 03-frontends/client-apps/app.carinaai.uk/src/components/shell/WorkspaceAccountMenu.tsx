@@ -3,7 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CreditCard, LogIn, LogOut, Settings, User } from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
+import { signOutAndRedirect } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 
 type WorkspaceAccountMenuProps = {
@@ -101,11 +101,7 @@ export function WorkspaceAccountMenu({
 
   async function leaveWorkspace(destination: '/login') {
     setOpen(false);
-    try {
-      await authClient.signOut();
-    } finally {
-      window.location.assign(destination);
-    }
+    await signOutAndRedirect(destination);
   }
 
   const menu =

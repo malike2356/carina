@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { sql } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
+import { documents as workspaceDocuments } from '@/db/schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,13 +80,19 @@ export async function GET(request: Request) {
       WHERE id = ${workspaceId}
       LIMIT 1
     `)),
-    section(() => db.execute(sql`
-      SELECT id::text, title, format, archived, created_at, updated_at
-      FROM documents
-      WHERE workspace_id = ${workspaceId}
-      ORDER BY updated_at DESC
-      LIMIT ${limit}
-    `)),
+    section(() => db
+      .select({
+        id: workspaceDocuments.id,
+        title: workspaceDocuments.title,
+        format: workspaceDocuments.format,
+        archived: workspaceDocuments.archived,
+        created_at: workspaceDocuments.createdAt,
+        updated_at: workspaceDocuments.updatedAt,
+      })
+      .from(workspaceDocuments)
+      .where(eq(workspaceDocuments.workspaceId, workspaceId))
+      .orderBy(desc(workspaceDocuments.updatedAt))
+      .limit(limit)),
     section(() => db.execute(sql`
       SELECT id::text, query, mode, status, rounds, created_at, completed_at, error
       FROM research_jobs
