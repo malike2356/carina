@@ -147,17 +147,16 @@ def channel_runtime_values(current: dict[str, str]) -> dict[str, str]:
 
 def transactional_email_values(current: dict[str, str]) -> dict[str, str]:
     """Fill transactional email settings from the private production secret file."""
+    merged: dict[str, str] = {}
+    for candidate in CHANNEL_CREDENTIAL_SECRET_CANDIDATES:
+        merged.update(parse_env_file(candidate))
     out: dict[str, str] = {}
     for key in TRANSACTIONAL_EMAIL_KEYS:
         if current.get(key, '').strip():
             continue
-        # Candidates are ordered from private production secrets to local
-        # fallbacks. An empty later value must not erase a valid secret.
-        for candidate in CHANNEL_CREDENTIAL_SECRET_CANDIDATES:
-            value = parse_env_file(candidate).get(key, '').strip()
-            if value:
-                out[key] = value
-                break
+        value = merged.get(key, '').strip()
+        if value:
+            out[key] = value
     return out
 
 
