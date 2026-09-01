@@ -44,12 +44,6 @@ CHANNEL_CREDENTIAL_SECRET_CANDIDATES = [
     ROOT / '.env',
 ]
 
-TRANSACTIONAL_EMAIL_KEYS = (
-    'RESEND_API_KEY',
-    'EMAIL_FROM',
-    'EMAIL_FROM_NAME',
-)
-
 DB_USER = os.environ.get('DB_USER', 'carina')
 DB_PASSWORD = os.environ.get('DB_PASSWORD', 'secret')
 PGBOUNCER_ENABLED = os.environ.get('PGBOUNCER_ENABLED', '1')
@@ -145,21 +139,6 @@ def channel_runtime_values(current: dict[str, str]) -> dict[str, str]:
     return out
 
 
-def transactional_email_values(current: dict[str, str]) -> dict[str, str]:
-    """Fill transactional email settings from the private production secret file."""
-    merged: dict[str, str] = {}
-    for candidate in CHANNEL_CREDENTIAL_SECRET_CANDIDATES:
-        merged.update(parse_env_file(candidate))
-    out: dict[str, str] = {}
-    for key in TRANSACTIONAL_EMAIL_KEYS:
-        if current.get(key, '').strip():
-            continue
-        value = merged.get(key, '').strip()
-        if value:
-            out[key] = value
-    return out
-
-
 def main() -> None:
     if not ENV_PATH.exists():
         raise SystemExit(f'missing {ENV_PATH}; copy from .env first')
@@ -216,12 +195,6 @@ def main() -> None:
         current['CHANNEL_CREDENTIAL_KEY'] = channel_key
 
     for key, value in channel_runtime_values(current).items():
-        out = [line for line in out if not line.startswith(f'{key}=')]
-        out.append(f'{key}={value}')
-        seen.add(key)
-        current[key] = value
-
-    for key, value in transactional_email_values(current).items():
         out = [line for line in out if not line.startswith(f'{key}=')]
         out.append(f'{key}={value}')
         seen.add(key)
