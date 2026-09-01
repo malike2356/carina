@@ -149,9 +149,10 @@ def transactional_email_values(current: dict[str, str]) -> dict[str, str]:
     """Fill transactional email settings from the private production secret file."""
     out: dict[str, str] = {}
     for key in TRANSACTIONAL_EMAIL_KEYS:
+        if current.get(key, '').strip():
+            continue
         # Candidates are ordered from private production secrets to local
-        # fallbacks. A configured private value is authoritative, including
-        # when an older runtime file already contains a different sender.
+        # fallbacks. An empty later value must not erase a valid secret.
         for candidate in CHANNEL_CREDENTIAL_SECRET_CANDIDATES:
             value = parse_env_file(candidate).get(key, '').strip()
             if value:
