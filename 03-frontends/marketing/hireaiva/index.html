@@ -10,138 +10,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-  <link rel="stylesheet" href="/vertical.css?v=20260802">
+  <link rel="stylesheet" href="/vertical.css?v=20260824">
   <link rel="stylesheet" href="/assets/css/live-demos.css?v=20260802f">
   <style>
     html { scroll-behavior: smooth; }
 
     main { padding: 0; max-width: none; }
     main .container { max-width: 1080px; }
-
-    /* 8-second test widget */
-    .eight-test {
-      position: fixed;
-      bottom: 1.5rem;
-      right: 1.5rem;
-      z-index: 500;
-      width: 272px;
-      background: rgba(9, 22, 30, 0.96);
-      border: 1px solid var(--teal-light);
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.45);
-      overflow: hidden;
-      transform: translateY(20px);
-      opacity: 0;
-      transition: opacity 0.4s ease, transform 0.4s ease;
-      pointer-events: none;
-    }
-    .eight-test.et-visible {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
-    .eight-test.et-done {
-      border-color: var(--amber);
-    }
-    .eight-test.et-out {
-      opacity: 0;
-      transform: translateY(12px);
-      pointer-events: none;
-    }
-    .et-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.65rem 0.9rem 0.5rem;
-      border-bottom: 1px solid rgba(52, 152, 192, 0.18);
-    }
-    .et-title {
-      font-size: 0.7rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--teal-light);
-      font-weight: 500;
-    }
-    .et-timer {
-      font-family: var(--ff-serif);
-      font-size: 1rem;
-      color: var(--amber);
-      font-weight: 500;
-      min-width: 1.5ch;
-      text-align: right;
-      transition: color 0.3s;
-    }
-    .et-close {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--silver);
-      font-size: 1rem;
-      line-height: 1;
-      padding: 0 0 0 0.5rem;
-      opacity: 0.6;
-    }
-    .et-close:hover { opacity: 1; }
-    .et-bar-track {
-      height: 2px;
-      background: rgba(52, 152, 192, 0.15);
-      position: relative;
-    }
-    .et-bar-fill {
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      width: 0%;
-      background: var(--teal-light);
-      transition: width 0.25s linear;
-    }
-    .et-body { padding: 0.75rem 0.9rem 0.85rem; }
-    .et-question {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.55rem;
-      padding: 0.35rem 0;
-      font-size: 0.82rem;
-      color: var(--silver);
-      line-height: 1.4;
-    }
-    .et-check {
-      flex-shrink: 0;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      border: 1.5px solid rgba(52, 152, 192, 0.35);
-      margin-top: 0.05rem;
-      position: relative;
-      transition: border-color 0.25s, background 0.25s;
-    }
-    .et-check.et-checked {
-      border-color: var(--teal-light);
-      background: rgba(52, 152, 192, 0.12);
-    }
-    .et-check.et-checked::after {
-      content: '';
-      position: absolute;
-      left: 4px; top: 2px;
-      width: 5px; height: 8px;
-      border: 1.5px solid var(--teal-light);
-      border-left: none;
-      border-top: none;
-      transform: rotate(42deg);
-    }
-    .et-question.et-q-checked { color: var(--white); }
-    .et-result {
-      font-size: 0.78rem;
-      color: var(--amber);
-      font-weight: 500;
-      text-align: center;
-      padding: 0.25rem 0 0;
-      display: none;
-      letter-spacing: 0.01em;
-    }
-    .et-result.et-result-visible { display: block; }
-    @media (max-width: 480px) {
-      .eight-test { right: 1rem; bottom: 1rem; width: 240px; }
-    }
 
     /* Section bands */
     .section--dark {
@@ -267,12 +142,53 @@
     .hero-section {
       position: relative;
       z-index: 0;
+      overflow: hidden;
       background:
         radial-gradient(ellipse 70% 55% at 75% 40%, rgba(26, 95, 122, 0.22) 0%, transparent 60%),
         radial-gradient(ellipse 50% 40% at 15% 80%, rgba(245, 166, 35, 0.06) 0%, transparent 55%),
         #0d1f2d;
       padding: 8rem 0 4.5rem;
       margin-top: 64px;
+    }
+    /* Ambient drift orbs - the same soft glow language used on the
+       workspace login/signup pages, so the marketing site and the product
+       share one visual signature instead of the hero feeling like a
+       separate design. Pure CSS, respects prefers-reduced-motion. */
+    .hero-glow {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .hero-glow span {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.5;
+      animation: hero-drift 24s ease-in-out infinite alternate;
+    }
+    .hero-glow span:first-child {
+      top: -12rem;
+      right: -8rem;
+      width: 30rem;
+      height: 30rem;
+      background: radial-gradient(circle, rgba(52, 152, 192, 0.5), transparent 70%);
+    }
+    .hero-glow span:last-child {
+      bottom: -14rem;
+      left: -6rem;
+      width: 26rem;
+      height: 26rem;
+      background: radial-gradient(circle, rgba(245, 166, 35, 0.32), transparent 70%);
+      animation-delay: -11s;
+    }
+    @keyframes hero-drift {
+      from { transform: translate3d(0, 0, 0) scale(1); }
+      to { transform: translate3d(2rem, -1.5rem, 0) scale(1.1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .hero-glow span { animation: none; }
     }
     .hero-grid {
       display: grid;
@@ -294,61 +210,48 @@
     .hero-section h1 {
       font-family: var(--ff-serif);
       font-weight: 500;
-      font-size: 3.5rem;
-      line-height: 1.2;
+      font-size: clamp(3.5rem, 5vw + 1.5rem, 4.25rem);
+      line-height: 1.08;
+      letter-spacing: -0.01em;
       margin-bottom: 1.25rem;
     }
-    .hero-section .hero-sub,
-    .hero-section .hero-lead {
+    .hero-section .hero-sub {
       font-size: 1.05rem;
       color: var(--silver);
       max-width: 32rem;
     }
-    .hero-section .hero-sub { margin-bottom: 1rem; }
     .hero-cta { margin-top: 2rem; display: flex; flex-wrap: wrap; gap: 0.75rem; }
-    .hero-tagline {
-      margin-top: 1.25rem;
-      font-size: 0.82rem;
-      color: var(--silver);
-      max-width: 32rem;
-    }
-    .hero-stats {
+    /* Trust badges sit right against the CTA row (not buried further down
+       the page) so credibility signals land in the same glance as the
+       button, before a visitor has decided whether to keep reading. */
+    .hero-badges {
+      margin-top: 1.1rem;
       display: flex;
       flex-wrap: wrap;
-      gap: 1.25rem 2rem;
-      margin-top: 2.5rem;
-      padding-top: 1.75rem;
-      border-top: 1px solid var(--border-dim);
+      gap: 0.6rem;
     }
-    .hero-stat {
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
-    }
-    .hero-stat strong {
-      font-family: var(--ff-serif);
-      font-size: 1.35rem;
-      font-weight: 500;
-      color: var(--amber);
-      line-height: 1.2;
-    }
-    .hero-stat span {
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      border: 1px solid var(--border-dim);
+      border-radius: 999px;
       font-size: 0.78rem;
       color: var(--silver);
-      letter-spacing: 0.02em;
+      background: rgba(52, 152, 192, 0.06);
     }
+    .hero-badge .ti { color: var(--teal-light); font-size: 0.95rem; }
+    .work-section { padding: 4rem 0 5rem; }
     .hero-proof {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 0.75rem;
-      max-width: 1080px;
-      margin: 3rem auto 0;
-      padding: 0 2rem;
     }
     .proof-item {
-      border: 1px solid var(--border-dim);
+      border: 1px solid var(--border);
       border-radius: var(--r-md);
-      background: rgba(255, 255, 255, 0.03);
+      background: var(--band-card-alt);
       padding: 1rem;
       min-height: 112px;
     }
@@ -363,7 +266,7 @@
       display: block;
       font-size: 0.78rem;
       line-height: 1.45;
-      color: var(--silver);
+      color: var(--band-muted);
     }
     .hero-conv { display: flex; justify-content: center; }
 
@@ -692,6 +595,15 @@
       grid-template-columns: repeat(3, 1fr);
       gap: 1rem;
     }
+    .roles-custom-wrap {
+      margin-top: 1rem;
+      display: flex;
+      justify-content: center;
+    }
+    .roles-custom-wrap .role-card--custom {
+      width: 100%;
+      max-width: 22rem;
+    }
     @media (max-width: 768px) {
       .roles-grid { grid-template-columns: repeat(2, 1fr); }
     }
@@ -791,6 +703,11 @@
       margin-bottom: 0.35rem;
     }
     .channel-desc { font-size: 0.85rem; color: var(--silver); line-height: 1.55; }
+    .channels-more {
+      margin-top: 1.75rem;
+      font-size: 0.85rem;
+      color: var(--silver);
+    }
 
     /* Automation */
     .auto-section { padding: 5rem 0; }
@@ -853,6 +770,66 @@
       font-size: 0.88rem;
       color: var(--silver);
       margin-top: 1.5rem;
+    }
+
+    /* Comparison table */
+    .compare-section { padding: 5rem 0; }
+    .compare-section h2 {
+      font-family: var(--ff-serif);
+      font-weight: 500;
+      font-size: 2rem;
+    }
+    .compare-lead { max-width: 40rem; }
+    .compare-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      -webkit-overflow-scrolling: touch;
+    }
+    .compare-table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+    .compare-table th,
+    .compare-table td {
+      padding: 0.85rem 1.1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      line-height: 1.5;
+    }
+    .compare-table thead th {
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 500;
+      color: var(--silver);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .compare-table tbody th {
+      font-weight: 500;
+      color: var(--band-text);
+      white-space: nowrap;
+    }
+    .compare-table tbody tr:last-child th,
+    .compare-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    .compare-table td { color: var(--band-muted); }
+    .compare-col-aiva {
+      background: rgba(245, 166, 35, 0.08);
+      color: var(--band-text) !important;
+      font-weight: 500;
+      border-left: 1px solid rgba(245, 166, 35, 0.25);
+      border-right: 1px solid rgba(245, 166, 35, 0.25);
+    }
+    thead .compare-col-aiva {
+      background: rgba(245, 166, 35, 0.14);
+      color: var(--amber) !important;
+      border-top: 1px solid rgba(245, 166, 35, 0.25);
     }
 
     /* VA team section */
@@ -1023,6 +1000,7 @@
     .va-team-cta-row {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 1.25rem;
       flex-wrap: wrap;
     }
@@ -1238,6 +1216,53 @@
     }
     .pricing-link-note a { color: var(--amber); }
 
+    /* FAQ */
+    .faq-section { padding: 5rem 0; }
+    .faq-list {
+      max-width: 42rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .faq-item {
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      background: var(--band-card);
+      padding: 0;
+      overflow: hidden;
+    }
+    .faq-item summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 1rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--band-text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after {
+      content: "+";
+      flex-shrink: 0;
+      font-size: 1.1rem;
+      color: var(--teal-light);
+      transition: transform 0.2s ease;
+    }
+    .faq-item[open] summary::after { transform: rotate(45deg); }
+    .faq-item[open] summary { border-bottom: 1px solid var(--border); }
+    .faq-item p {
+      margin: 0;
+      padding: 0 1.25rem 1.1rem;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: var(--band-muted);
+    }
+    .faq-item a { color: var(--amber); }
+
     /* Final CTA */
     .final-cta {
       background:
@@ -1279,11 +1304,47 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 1rem;
-      font-size: 0.82rem;
+      gap: 0.5rem 1rem;
+      font-size: 0.78rem;
+      opacity: 0.8;
     }
     .footer-legal a { color: var(--silver); text-decoration: none; }
     .footer-legal a:hover { color: var(--amber); }
+
+    .site-footer .footer-nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem 1.25rem;
+      max-width: 40rem;
+    }
+    .site-footer .footer-nav a {
+      color: var(--silver);
+      font-size: 0.875rem;
+      text-decoration: none;
+    }
+    .site-footer .footer-nav a:hover { color: var(--white); }
+    .site-footer .footer-ecosystem {
+      max-width: 34rem;
+      font-size: 0.78rem;
+      color: var(--silver);
+      line-height: 1.75;
+      opacity: 0.85;
+    }
+    .site-footer .footer-ecosystem-label {
+      display: block;
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.55;
+      margin-bottom: 0.35rem;
+    }
+    .site-footer .footer-ecosystem a {
+      color: var(--silver);
+      text-decoration: none;
+    }
+    .site-footer .footer-ecosystem a:hover { color: var(--amber); }
+    .site-footer .footer-ecosystem-sep { opacity: 0.35; padding: 0 0.15rem; }
 
     /* Demo section (aiva-in-action) */
     .demos-section { padding: 5rem 0; }
@@ -1507,14 +1568,11 @@
       <a href="https://hireaiva.co.uk/" class="nav-logo">Aiva<span class="dot">.</span></a>
       <div class="nav-links" aria-label="Aiva product">
         <a href="#how-it-works">How it works</a>
-        <a href="#aiva-in-action">Live demos</a>
-        <a href="/demo/">All demos</a>
+        <a href="/demo/">Demos</a>
         <a href="#pricing">Pricing</a>
         <a href="/security/">Security</a>
-        <a href="/support/">Support</a>
         <a href="https://admin.hireaiva.co.uk/login" class="nav-sign-in">Sign in</a>
-        <a href="/book-demo/" class="nav-sign-in">Book a demo</a>
-        <a href="https://admin.hireaiva.co.uk/register" class="nav-cta">Start free</a>
+        <a href="https://admin.hireaiva.co.uk/signup" class="nav-cta">Start free</a>
       </div>
       <button class="nav-hamburger" id="nav-hamburger" aria-label="Open menu" aria-expanded="false" type="button">
         <span></span><span></span><span></span>
@@ -1524,42 +1582,33 @@
   <div class="nav-mobile-panel" id="nav-mobile-panel" aria-hidden="true">
     <a href="#how-it-works">How it works</a>
     <a href="#aiva-in-action">Live demos</a>
-    <a href="/demo/">All demos</a>
+    <a href="#growth">Growth &amp; Property</a>
+    <a href="/demo/">Demo library</a>
     <a href="#pricing">Pricing</a>
     <a href="/security/">Security</a>
     <a href="/support/">Support</a>
     <a href="/book-demo/">Book a demo</a>
     <a href="https://admin.hireaiva.co.uk/login">Sign in</a>
-    <a href="https://admin.hireaiva.co.uk/register" class="nav-mobile-cta">Start free</a>
+    <a href="https://admin.hireaiva.co.uk/signup" class="nav-mobile-cta">Start free</a>
   </div>
 
   <main>
     <!-- Section 2: Hero -->
     <section class="hero-section section--dark">
+      <div class="hero-glow" aria-hidden="true"><span></span><span></span></div>
       <div class="hero-grid">
         <div class="hero-copy">
           <p class="hero-eyebrow">AI employee for small business and growing teams</p>
           <h1>Hire Aiva. Get your time back.</h1>
-          <p class="hero-sub">Aiva is your standalone AI employee. It answers customer questions, books appointments, and handles follow-ups on WhatsApp, email, Slack, and Telegram - 24/7, without you.</p>
-          <p class="hero-lead">Register, open the workspace, wire automations, and connect Telegram. The product does the routine work end to end.</p>
+          <p class="hero-sub">Aiva answers, books, and follows up on WhatsApp, email, Slack, and Telegram - 24/7, without you. Team adds Outreach for customer acquisition; Business adds multi-line outreach and Property deal-sourcing.</p>
           <div class="hero-cta">
-            <a href="https://admin.hireaiva.co.uk/register" class="btn btn-primary">Start free - 30 days</a>
+            <a href="https://admin.hireaiva.co.uk/signup" class="btn btn-primary">Start free - 30 days</a>
             <a href="#aiva-in-action" class="btn btn-ghost">Watch live demos</a>
           </div>
-          <p class="hero-tagline">No card required. Cancel any time.</p>
-          <div class="hero-stats">
-            <div class="hero-stat">
-              <strong>24/7</strong>
-              <span>Always answering</span>
-            </div>
-            <div class="hero-stat">
-              <strong>Automations</strong>
-              <span>Set once, runs alone</span>
-            </div>
-            <div class="hero-stat">
-              <strong>30 days</strong>
-              <span>Free trial</span>
-            </div>
+          <div class="hero-badges">
+            <span class="hero-badge"><i class="ti ti-clock"></i> Live in minutes</span>
+            <span class="hero-badge"><i class="ti ti-credit-card-off"></i> No card required</span>
+            <span class="hero-badge"><i class="ti ti-calendar-check"></i> Cancel any time</span>
           </div>
         </div>
         <div class="hero-conv">
@@ -1581,22 +1630,34 @@
           </div>
         </div>
       </div>
-      <div class="hero-proof" aria-label="Aiva work examples">
-        <div class="proof-item">
-          <strong>Customer work</strong>
-          <span>Answer questions, qualify enquiries, book appointments, and keep every thread moving.</span>
-        </div>
-        <div class="proof-item">
-          <strong>Admin work</strong>
-          <span>Sort inboxes, prepare updates, chase missing details, and route the work to the right place.</span>
-        </div>
-        <div class="proof-item">
-          <strong>Recurring work</strong>
-          <span>Run scheduled follow-ups, reminders, reports, and automation routines without another prompt.</span>
-        </div>
-        <div class="proof-item">
-          <strong>Channels that stick</strong>
-          <span>WhatsApp, email, Slack, Telegram, and web chat share one memory. Clients stay in the thread they already use.</span>
+    </section>
+
+    <!-- Section 1b: What Aiva handles - relocated out of the hero itself
+         so the first viewport isn't headline + copy + CTA + badges + a
+         chat mockup + four cards all at once. Its own short section gives
+         the same four cards room to breathe right after the hero instead
+         of stacking under it. -->
+    <section class="work-section section--light">
+      <div class="container">
+        <span class="section-label">Coverage</span>
+        <h2 class="section-title-centered">What Aiva actually handles</h2>
+        <div class="hero-proof" aria-label="Aiva work examples">
+          <div class="proof-item">
+            <strong>Customer work</strong>
+            <span>Answer questions, qualify enquiries, book appointments, and keep every thread moving - including inbound on your Outreach business lines (Team+).</span>
+          </div>
+          <div class="proof-item">
+            <strong>Admin work</strong>
+            <span>Sort inboxes, prepare updates, chase missing details, and route the work to the right place.</span>
+          </div>
+          <div class="proof-item">
+            <strong>Recurring work</strong>
+            <span>Run scheduled follow-ups, reminders, reports, and automation routines without another prompt.</span>
+          </div>
+          <div class="proof-item">
+            <strong>Channels that stick</strong>
+            <span>WhatsApp, email, Slack, Telegram, and web chat share one memory. Clients stay in the thread they already use.</span>
+          </div>
         </div>
       </div>
     </section>
@@ -1626,6 +1687,8 @@
               <li>Role templates from real operations</li>
               <li>One memory across every surface</li>
               <li>Carries recurring work end to end</li>
+              <li>Outreach pipelines and business lines, not just replies (Team+)</li>
+              <li>Property underwriting and deal-sourcing tools built in (Business)</li>
             </ul>
           </div>
         </div>
@@ -1655,19 +1718,43 @@
           <div class="va-time-col va-time-col--right">
             <p class="va-time-label">Free to focus on</p>
             <ul>
-              <li>Finding customers</li>
-              <li>Closing deals</li>
+              <li>Finding customers (Outreach engine on Team)</li>
+              <li>Closing deals (Property diligence and calculators on Business)</li>
               <li>Building relationships</li>
-              <li>Growing the business</li>
+              <li>Growing the business across multiple business lines (Business)</li>
             </ul>
-            <p class="va-time-note">This is what moves the needle.</p>
+            <p class="va-time-note">Team and Business tiers include the tools for this work - see Growth &amp; Property below.</p>
           </div>
         </div>
 
         <div class="va-team-cta-row">
-          <a href="https://admin.hireaiva.co.uk/register" class="btn btn-primary">Start free - 30 days</a>
-          <a href="/demo/" class="btn btn-ghost">See product demos</a>
+          <a href="https://admin.hireaiva.co.uk/signup" class="btn btn-primary">Start free - 30 days</a>
+          <a href="#growth" class="btn btn-ghost">Growth &amp; Property</a>
         </div>
+      </div>
+    </section>
+
+    <!-- Section: Growth & Property (203 - hybrid positioning band) -->
+    <section class="pillars-section section--dark" id="growth">
+      <div class="container">
+        <span class="section-label">Beyond the inbox</span>
+        <h2 class="section-title-centered">When you are ready to grow, Aiva is already built for it</h2>
+        <p class="section-lead" style="text-align:center;max-width:42rem;margin:0 auto 2rem;">Start with everyday customer service on Starter. Add real acquisition tooling on Team. Run multiple outreach verticals and UK property intelligence on Business.</p>
+        <div class="pillars-row">
+          <div class="pillar-card">
+            <h3>Outreach engine</h3>
+            <p>Find, qualify, and nurture leads with pipelines, sequences, and business-line packs. Team includes one business line; try simulate-inbound free during your trial.</p>
+          </div>
+          <div class="pillar-card">
+            <h3>Business lines</h3>
+            <p>Each vertical (property sourcing, finance outreach, and more) gets its own pipeline, intents, and qualification flow. Business runs unlimited lines at once.</p>
+          </div>
+          <div class="pillar-card">
+            <h3>Property workspace</h3>
+            <p>UK due diligence (Land Registry, EPC, Companies House), 28 investment calculators with full working, saved searches, and floor-plan-to-BOQ refurb estimates. Business also unlocks the Aiva bridge to your own Propreneur workspace: connect your existing UK property MIS and your Aiva reads and updates portfolio, deals, and tenancies through it.</p>
+          </div>
+        </div>
+        <p class="handoff-note" style="text-align:center;margin:2rem auto 0;"><a href="#aiva-in-action" style="color:var(--amber);text-decoration:none;">Watch the Outreach and Property demos</a> &nbsp;|&nbsp; <a href="#pricing" style="color:var(--amber);text-decoration:none;">See tier details</a></p>
       </div>
     </section>
 
@@ -1676,10 +1763,13 @@
       <div class="container">
         <span class="section-label">See it work</span>
         <h2>Live product demos</h2>
-        <p class="section-lead">Registration through Telegram, plus Email, Calendar, Notes, Documents, Contacts, and Research. Interactive walkthroughs of the same flows you use after you start free.</p>
+        <p class="section-lead">Registration through Telegram, plus Business lines, Outreach, Property, Email, Calendar, Notes, Documents, Contacts, and Research. Interactive walkthroughs of the same flows you use after you start free.</p>
                 <div class="live-demo-tabs" role="tablist" aria-label="Product workflow demos">
           <button class="live-demo-tab" type="button" data-live-demo="live-register" role="tab" aria-selected="false">Registration</button>
           <button class="live-demo-tab" type="button" data-live-demo="live-workspace" role="tab" aria-selected="false">Workspace</button>
+          <button class="live-demo-tab" type="button" data-live-demo="live-businesslines" role="tab" aria-selected="false">Business lines</button>
+          <button class="live-demo-tab" type="button" data-live-demo="live-outreach" role="tab" aria-selected="false">Outreach</button>
+          <button class="live-demo-tab" type="button" data-live-demo="live-property" role="tab" aria-selected="false">Property</button>
           <button class="live-demo-tab" type="button" data-live-demo="live-automation" role="tab" aria-selected="false">AI automation</button>
           <button class="live-demo-tab is-active" type="button" data-live-demo="live-telegram" role="tab" aria-selected="true">Telegram</button>
           <button class="live-demo-tab" type="button" data-live-demo="live-email" role="tab" aria-selected="false">Email</button>
@@ -1693,7 +1783,7 @@
         <div class="live-demo-panel" id="live-register" role="tabpanel">
           <div class="live-watch-grid">
             <figure class="live-demo" data-workflow="register" aria-label="Registration walkthrough">
-              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/register</p></div>
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/signup</p></div>
               <div class="live-demo-screen">
                 <div class="live-step is-active" data-step="0">
                   <div class="sim-auth">
@@ -1750,7 +1840,7 @@
                 <li>Launch into the workspace</li>
               </ol>
               <div class="live-demo-actions">
-                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/register">Try registration live</a>
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/signup">Try registration live</a>
                 <a class="btn btn-ghost" href="/demo/#register">Full demo page</a>
               </div>
             </div>
@@ -1839,6 +1929,155 @@
           </div>
         </div>
 
+        <div class="live-demo-panel" id="live-businesslines" role="tabpanel">
+          <div class="live-watch-grid">
+            <figure class="live-demo" data-workflow="businesslines" aria-label="Business lines walkthrough">
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/aiva/domains</p></div>
+              <div class="live-demo-screen">
+                <div class="live-step is-active" data-step="0">
+                  <div class="sim-modal">
+                    <h4>Import a business line pack</h4>
+                    <p class="sim-onboard-sub">Property deal sourcing · pipeline stages · qualification fields</p>
+                    <div class="sim-btn is-pulse">Import pack</div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="1">
+                  <div class="sim-worker-shell">
+                    <p class="sim-kicker">Simulate inbound</p>
+                    <p class="sim-heading">"Looking for a 2-bed BTL in NG7"</p>
+                    <div class="sim-bubble sim-bubble--in">Matched intent: investor enquiry · confidence 92%</div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="2">
+                  <div class="sim-cards">
+                    <div class="sim-card"><strong>new</strong><span>3 leads</span></div>
+                    <div class="sim-card"><strong>qualified</strong><span>2 leads</span></div>
+                    <div class="sim-card"><strong>booked</strong><span>1 lead</span></div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="3">
+                  <div class="sim-status">Business line active · Team plan includes 1 line</div>
+                </div>
+                <div class="workflow-chip"><span data-workflow-label>Import your business line</span></div>
+                <div class="workflow-progress" aria-hidden="true"><i></i></div>
+              </div>
+            </figure>
+            <div class="live-demo-caption">
+              <h3>One vertical, one pipeline</h3>
+              <p>Import a line pack, simulate inbound messages, and watch leads move through stages before you connect a live channel.</p>
+              <ol class="workflow-beats" data-beats-for="businesslines">
+                <li class="is-active">Import your business line</li>
+                <li>Simulate an inbound message</li>
+                <li>See pipeline stage counts</li>
+                <li>Ready for live channels</li>
+              </ol>
+              <div class="live-demo-actions">
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/signup?plan=team">Try on Team trial</a>
+                <a class="btn btn-ghost" href="/demo/#businesslines">Full demo page</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="live-demo-panel" id="live-outreach" role="tabpanel">
+          <div class="live-watch-grid">
+            <figure class="live-demo" data-workflow="outreach" aria-label="Outreach walkthrough">
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/aiva/outreach</p></div>
+              <div class="live-demo-screen">
+                <div class="live-step is-active" data-step="0">
+                  <div class="sim-cards">
+                    <div class="sim-card"><strong>Jordan Lee</strong><span>New lead · LinkedIn</span></div>
+                    <div class="sim-card"><strong>Acme Lettings</strong><span>Replied · needs qualify</span></div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="1">
+                  <div class="sim-modal">
+                    <h4>Qualification captured</h4>
+                    <div class="sim-field"><label>Budget</label><div class="sim-input">£180k-£220k</div></div>
+                    <div class="sim-field"><label>Timeline</label><div class="sim-input">Under 90 days</div></div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="2">
+                  <div class="sim-mail-reader">
+                    <strong>Draft follow-up ready</strong>
+                    <p>Thanks for the detail on budget and timeline. I can send comparables for NG7 - approve to send or edit first.</p>
+                    <div class="sim-btn">Submit for approval</div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="3">
+                  <div class="sim-status">Stage updated: qualified · human task closed</div>
+                </div>
+                <div class="workflow-chip"><span data-workflow-label>New lead in CRM</span></div>
+                <div class="workflow-progress" aria-hidden="true"><i></i></div>
+              </div>
+            </figure>
+            <div class="live-demo-caption">
+              <h3>Outreach that finishes the follow-up</h3>
+              <p>Leads enter the CRM, get qualified on your business line, and move toward booked - with approvals before anything sensitive sends.</p>
+              <ol class="workflow-beats" data-beats-for="outreach">
+                <li class="is-active">New lead in CRM</li>
+                <li>Qualification fields captured</li>
+                <li>Draft follow-up for approval</li>
+                <li>Pipeline stage updated</li>
+              </ol>
+              <div class="live-demo-actions">
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/signup?plan=team">Start Team trial</a>
+                <a class="btn btn-ghost" href="/demo/#outreach">Full demo page</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="live-demo-panel" id="live-property" role="tabpanel">
+          <div class="live-watch-grid">
+            <figure class="live-demo" data-workflow="property" aria-label="Property walkthrough">
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/aiva/property</p></div>
+              <div class="live-demo-screen">
+                <div class="live-step is-active" data-step="0">
+                  <div class="sim-modal">
+                    <h4>Due diligence lookup</h4>
+                    <div class="sim-field"><label>Postcode</label><div class="sim-input">NG7 2RD<span class="sim-caret"></span></div></div>
+                    <div class="sim-btn is-pulse">Run lookup</div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="1">
+                  <div class="sim-cards">
+                    <div class="sim-card"><strong>Land Registry</strong><span>Last sale £176k · 2019</span></div>
+                    <div class="sim-card"><strong>EPC</strong><span>Rating D · flat</span></div>
+                    <div class="sim-card"><strong>Companies House</strong><span>Corporate owner linked</span></div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="2">
+                  <div class="sim-worker-shell">
+                    <p class="sim-kicker">BTL calculator</p>
+                    <p class="sim-heading">Gross yield 6.8% · monthly cashflow £186</p>
+                    <p class="sim-onboard-sub">Full working shown step by step in the product</p>
+                  </div>
+                </div>
+                <div class="live-step" data-step="3">
+                  <div class="sim-status">Saved to workspace · Business plan</div>
+                </div>
+                <div class="workflow-chip"><span data-workflow-label>Run due diligence</span></div>
+                <div class="workflow-progress" aria-hidden="true"><i></i></div>
+              </div>
+            </figure>
+            <div class="live-demo-caption">
+              <h3>Property intelligence, not just lettings chat</h3>
+              <p>Pull real UK data, run any of 28 native calculators with visible working, and save searches that feed your outreach line.</p>
+              <ol class="workflow-beats" data-beats-for="property">
+                <li class="is-active">Run due diligence</li>
+                <li>Review Land Registry and EPC</li>
+                <li>Run BTL calculator</li>
+                <li>Save to your workspace</li>
+              </ol>
+              <div class="live-demo-actions">
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/signup?plan=business">Start Business trial</a>
+                <a class="btn btn-ghost" href="/demo/#property">Full demo page</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="live-demo-panel" id="live-automation" role="tabpanel">
           <div class="live-watch-grid">
             <figure class="live-demo" data-workflow="automation" aria-label="Automation walkthrough">
@@ -1907,7 +2146,7 @@
                 <li>Runs while you sleep</li>
               </ol>
               <div class="live-demo-actions">
-                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/register">Start free and build one</a>
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/signup">Start free and build one</a>
                 <a class="btn btn-ghost" href="/demo/#automation">Full demo page</a>
               </div>
             </div>
@@ -1923,7 +2162,7 @@
                   <div class="sim-tg-layout">
                     <div class="sim-connect-card">
                       <p class="sim-onboard-title" style="text-align:left;">Connect Telegram</p>
-                      <p class="sim-onboard-sub" style="text-align:left;">Paste a BotFather token. Aria replies in the same chat.</p>
+                      <p class="sim-onboard-sub" style="text-align:left;">Each AI Employee gets its own BotFather bot. Inbound routes into Unified Conversations.</p>
                       <div class="sim-field"><label>Bot token</label><div class="sim-input">From @BotFather</div></div>
                       <div class="sim-btn">Connect</div>
                     </div>
@@ -1980,16 +2219,16 @@
               </div>
             </figure>
             <div class="live-demo-caption">
-              <h3>Meet clients on Telegram</h3>
-              <p>Paste a BotFather token and Aria answers in the thread.</p>
+              <h3>One Telegram bot per AI Employee</h3>
+              <p>Paste a BotFather token on the worker. Aria replies in DMs and groups with the same memory as email and web chat.</p>
               <ol class="workflow-beats" data-beats-for="telegram">
-                <li class="is-active">Open Telegram connect</li>
+                <li class="is-active">Open worker Telegram connect</li>
                 <li>Paste BotFather token</li>
                 <li>Channel shows Connected</li>
                 <li>Aiva replies in Telegram</li>
               </ol>
               <div class="live-demo-actions">
-                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/register">Connect after signup</a>
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/signup">Connect after signup</a>
                 <a class="btn btn-ghost" href="/demo/#telegram">Full demo page</a>
               </div>
             </div>
@@ -2000,7 +2239,7 @@
         <div class="live-demo-panel" id="live-email" role="tabpanel">
           <div class="live-watch-grid">
             <figure class="live-demo" data-workflow="email" aria-label="Triage email with Aiva walkthrough">
-              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/email</p></div>
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/aiva/email</p></div>
               <div class="live-demo-screen">
 
                 <div class="live-step is-active" data-step="0">
@@ -2063,7 +2302,7 @@
                 <li>Send or submit for approval</li>
               </ol>
               <div class="live-demo-actions">
-                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/email">Open in product</a>
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/signup">Open in product</a>
                 <a class="btn btn-ghost" href="/demo/#email">Full demo page</a>
               </div>
             </div>
@@ -2073,7 +2312,7 @@
         <div class="live-demo-panel" id="live-calendar" role="tabpanel">
           <div class="live-watch-grid">
             <figure class="live-demo" data-workflow="calendar" aria-label="Schedule without the back-and-forth walkthrough">
-              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/calendar</p></div>
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/aiva/calendar</p></div>
               <div class="live-demo-screen">
 
                 <div class="live-step is-active" data-step="0">
@@ -2123,7 +2362,7 @@
                 <li>Synced across Google and local</li>
               </ol>
               <div class="live-demo-actions">
-                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/calendar">Open in product</a>
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/signup">Open in product</a>
                 <a class="btn btn-ghost" href="/demo/#calendar">Full demo page</a>
               </div>
             </div>
@@ -2133,7 +2372,7 @@
         <div class="live-demo-panel" id="live-notes" role="tabpanel">
           <div class="live-watch-grid">
             <figure class="live-demo" data-workflow="notes" aria-label="Capture notes, reminders, and tasks walkthrough">
-              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/notes</p></div>
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/aiva/notes</p></div>
               <div class="live-demo-screen">
 
                 <div class="live-step is-active" data-step="0">
@@ -2186,7 +2425,7 @@
                 <li>Hand off to calendar or automation</li>
               </ol>
               <div class="live-demo-actions">
-                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/notes">Open in product</a>
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/signup">Open in product</a>
                 <a class="btn btn-ghost" href="/demo/#notes">Full demo page</a>
               </div>
             </div>
@@ -2196,7 +2435,7 @@
         <div class="live-demo-panel" id="live-documents" role="tabpanel">
           <div class="live-watch-grid">
             <figure class="live-demo" data-workflow="documents" aria-label="Write and train on documents walkthrough">
-              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/documents</p></div>
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/aiva/documents</p></div>
               <div class="live-demo-screen">
 
                 <div class="live-step is-active" data-step="0">
@@ -2246,7 +2485,7 @@
                 <li>Train from Drive uploads</li>
               </ol>
               <div class="live-demo-actions">
-                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/documents">Open in product</a>
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/signup">Open in product</a>
                 <a class="btn btn-ghost" href="/demo/#documents">Full demo page</a>
               </div>
             </div>
@@ -2256,7 +2495,7 @@
         <div class="live-demo-panel" id="live-contacts" role="tabpanel">
           <div class="live-watch-grid">
             <figure class="live-demo" data-workflow="contacts" aria-label="Keep one searchable directory walkthrough">
-              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/contacts</p></div>
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/aiva/contacts</p></div>
               <div class="live-demo-screen">
 
                 <div class="live-step is-active" data-step="0">
@@ -2305,7 +2544,7 @@
                 <li>Aivas search this directory</li>
               </ol>
               <div class="live-demo-actions">
-                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/contacts">Open in product</a>
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/signup">Open in product</a>
                 <a class="btn btn-ghost" href="/demo/#contacts">Full demo page</a>
               </div>
             </div>
@@ -2315,7 +2554,7 @@
         <div class="live-demo-panel" id="live-research" role="tabpanel">
           <div class="live-watch-grid">
             <figure class="live-demo" data-workflow="research" aria-label="Run cited research papers walkthrough">
-              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/research</p></div>
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/aiva/research</p></div>
               <div class="live-demo-screen">
 
                 <div class="live-step is-active" data-step="0">
@@ -2331,7 +2570,7 @@
                 </div>
                 <div class="live-step" data-step="1">
                   <div class="sim-mail-reader">
-                    <strong>Carina is researching...</strong>
+                    <strong>Aria is researching...</strong>
                     <div class="sim-progress"><i></i></div>
                     <p>12 / 20 sources analysed · ETA 04:32</p>
                     <p>Mode: Fact-check · Depth: Standard</p>
@@ -2368,12 +2607,12 @@
               <p>Start a query, watch sources fill in, then save the paper to Documents for your Aivas.</p>
               <ol class="workflow-beats" data-beats-for="research">
                 <li class="is-active">Start a research paper</li>
-                <li>Carina is researching</li>
+                <li>Aria is researching</li>
                 <li>Review cited sources</li>
                 <li>Save to Documents</li>
               </ol>
               <div class="live-demo-actions">
-                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/research">Open in product</a>
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/signup">Open in product</a>
                 <a class="btn btn-ghost" href="/demo/#research">Full demo page</a>
               </div>
             </div>
@@ -2382,7 +2621,7 @@
 
         <div class="live-demos-cta">
           <a href="/demo/" class="btn btn-ghost">Open all demos</a>
-          <a href="https://admin.hireaiva.co.uk/register" class="btn btn-primary" style="background:var(--amber);color:var(--ink);border-color:var(--amber);">Try Aiva free for 30 days</a>
+          <a href="https://admin.hireaiva.co.uk/signup" class="btn btn-primary" style="background:var(--amber);color:var(--ink);border-color:var(--amber);">Try Aiva free for 30 days</a>
         </div>
       </div>
     </section>
@@ -2456,7 +2695,7 @@
               <p class="role-example-q">"Do you offer next-day delivery?"</p>
               <p class="role-example-a">I can answer, check policy, and hand off anything unusual.</p>
             </div>
-            <a href="https://admin.hireaiva.co.uk/register?intent=provision&amp;role=customer_service" class="role-try">Try this role</a>
+            <a href="https://admin.hireaiva.co.uk/signup?intent=provision&amp;role=customer_service" class="role-try">Try this role</a>
           </div>
           <div class="role-card">
             <i class="ti ti-calendar-event"></i>
@@ -2465,7 +2704,7 @@
               <p class="role-example-q">"Can I book a table for Saturday?"</p>
               <p class="role-example-a">I can check availability, confirm details, and send the follow-up.</p>
             </div>
-            <a href="https://admin.hireaiva.co.uk/register?intent=provision&amp;role=booking" class="role-try">Try this role</a>
+            <a href="https://admin.hireaiva.co.uk/signup?intent=provision&amp;role=booking" class="role-try">Try this role</a>
           </div>
           <div class="role-card">
             <i class="ti ti-target"></i>
@@ -2474,16 +2713,25 @@
               <p class="role-example-q">"What does your service include?"</p>
               <p class="role-example-a">I can qualify fit, capture context, and route warm leads.</p>
             </div>
-            <a href="https://admin.hireaiva.co.uk/register?intent=provision&amp;role=sales" class="role-try">Try this role</a>
+            <a href="https://admin.hireaiva.co.uk/signup?intent=provision&amp;role=sales" class="role-try">Try this role</a>
+          </div>
+          <div class="role-card">
+            <i class="ti ti-target"></i>
+            <h3>Growth / Lead generation</h3>
+            <div class="role-example">
+              <p class="role-example-q">"We spoke last week about your investor list - still interested?"</p>
+              <p class="role-example-a">I can qualify fit, update the CRM pipeline, and draft follow-ups for your approval on your Outreach business line.</p>
+            </div>
+            <a href="https://admin.hireaiva.co.uk/signup?plan=team" class="role-try">Try on Team</a>
           </div>
           <div class="role-card">
             <i class="ti ti-building"></i>
-            <h3>Property enquiry</h3>
+            <h3>Property investor</h3>
             <div class="role-example">
-              <p class="role-example-q">"Is the flat on Park Road still available?"</p>
-              <p class="role-example-a">I can answer, collect requirements, and arrange the next step.</p>
+              <p class="role-example-q">"What is the yield on NG7 2RD if we buy at £180k?"</p>
+              <p class="role-example-a">I can run due diligence, run the BTL calculator with full working, and save the search to your pipeline (Business).</p>
             </div>
-            <a href="https://admin.hireaiva.co.uk/register?intent=provision&amp;role=property" class="role-try">Try this role</a>
+            <a href="https://admin.hireaiva.co.uk/signup?plan=business" class="role-try">Try on Business</a>
           </div>
           <div class="role-card">
             <i class="ti ti-tool"></i>
@@ -2492,13 +2740,15 @@
               <p class="role-example-q">"My login is not working, can you help?"</p>
               <p class="role-example-a">I can triage, gather details, and escalate when access is sensitive.</p>
             </div>
-            <a href="https://admin.hireaiva.co.uk/register?intent=provision&amp;role=tech_support" class="role-try">Try this role</a>
+            <a href="https://admin.hireaiva.co.uk/signup?intent=provision&amp;role=tech_support" class="role-try">Try this role</a>
           </div>
+        </div>
+        <div class="roles-custom-wrap">
           <div class="role-card role-card--custom">
             <i class="ti ti-plus"></i>
             <h3>Custom role</h3>
             <p class="role-custom-body">Describe the work you repeat every week. Your Aiva is configured from your description.</p>
-            <a href="https://admin.hireaiva.co.uk/register?intent=provision" class="role-try">Try this role</a>
+            <a href="https://admin.hireaiva.co.uk/signup?intent=provision" class="role-try">Try this role</a>
           </div>
         </div>
       </div>
@@ -2529,14 +2779,40 @@
           <div class="channel-item">
             <i class="ti ti-brand-telegram"></i>
             <div class="channel-name">Telegram</div>
-            <p class="channel-desc">Full two-way messaging. Works in groups and direct messages.</p>
+            <p class="channel-desc">One BotFather bot per hired Aiva. Inbound routes into Unified Conversations and your business-line qualification flow.</p>
           </div>
           <div class="channel-item">
             <i class="ti ti-message"></i>
             <div class="channel-name">Web chat</div>
-            <p class="channel-desc">Embed on any site with one line of code. Served from core.carinaai.uk/widget.js.</p>
+            <p class="channel-desc">Paste a one-line script (or iframe) on your site. Site visitors chat with your Aiva using your FAQ and optional booking tools. No separate app to install.</p>
+          </div>
+          <div class="channel-item">
+            <i class="ti ti-brand-discord"></i>
+            <div class="channel-name">Discord</div>
+            <p class="channel-desc">Answers in server channels and DMs, same memory as everywhere else.</p>
+          </div>
+          <div class="channel-item">
+            <i class="ti ti-phone"></i>
+            <div class="channel-name">SMS</div>
+            <p class="channel-desc">Plain text messages in and out, for clients who never open an app.</p>
+          </div>
+          <div class="channel-item">
+            <i class="ti ti-brand-teams"></i>
+            <div class="channel-name">Microsoft Teams</div>
+            <p class="channel-desc">Sits in your Teams channels for internal work that never left the inbox before.</p>
+          </div>
+          <div class="channel-item">
+            <i class="ti ti-message-2"></i>
+            <div class="channel-name">Google Chat</div>
+            <p class="channel-desc">Same coverage for Workspace-based teams already living in Chat.</p>
+          </div>
+          <div class="channel-item">
+            <i class="ti ti-brand-google"></i>
+            <div class="channel-name">Google Calendar</div>
+            <p class="channel-desc">Real OAuth connection. Aiva reads and books against your actual calendar.</p>
           </div>
         </div>
+        <p class="channels-more">Plus Matrix, Mattermost, WeCom, DingTalk, Feishu, IRC, and more on request. One workspace, connect what your business actually uses.</p>
       </div>
     </section>
 
@@ -2571,17 +2847,118 @@
           </div>
           <div class="auto-card">
             <div>
-              <span class="step-badge">Day 1: intro email</span>
+              <span class="step-badge">New lead captured</span>
               <span class="step-arrow">-&gt;</span>
-              <span class="step-badge">Day 3: check-in</span>
+              <span class="step-badge">Qualify on business line</span>
               <span class="step-arrow">-&gt;</span>
-              <span class="step-badge">Day 5: warm close</span>
+              <span class="step-badge">Outreach sequence sends</span>
             </div>
-            <div class="schedule-badge">Triggered on new lead</div>
-            <p class="auto-quote">"Three-touch follow-up runs end to end. We just see the replies."</p>
+            <div class="schedule-badge">Outreach · Team plan</div>
+            <p class="auto-quote">"Three-touch follow-up runs on the CRM pipeline. We only approve the sensitive replies."</p>
           </div>
         </div>
         <p class="auto-note">Your Aiva uses judgment on every step. It does not break when something unexpected happens.</p>
+      </div>
+    </section>
+
+    <!-- Section 7b: Comparison -->
+    <section class="compare-section section--light">
+      <div class="container">
+        <span class="section-label">The alternative</span>
+        <h2 class="section-title-centered">What you are actually comparing Aiva to</h2>
+        <p class="section-lead compare-lead">Not another chatbot window. Not a workflow you have to build. Not a hire you have to onboard.</p>
+        <div class="compare-table-wrap">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th scope="col" class="compare-row-label"></th>
+                <th scope="col" class="compare-col-aiva">Aiva</th>
+                <th scope="col">A generic AI chatbot</th>
+                <th scope="col">Manual automation tools</th>
+                <th scope="col">Hiring in-house</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Setup time</th>
+                <td class="compare-col-aiva">Minutes, guided onboarding</td>
+                <td>Minutes, but it only replies</td>
+                <td>Days of flow-building</td>
+                <td>Weeks of interviewing and training</td>
+              </tr>
+              <tr>
+                <th scope="row">Works while you sleep</th>
+                <td class="compare-col-aiva">Yes, 24/7, every connected channel</td>
+                <td>Only while you are prompting it</td>
+                <td>Only the exact flow you wired</td>
+                <td>No, one person, one timezone, one shift</td>
+              </tr>
+              <tr>
+                <th scope="row">Channels covered</th>
+                <td class="compare-col-aiva">WhatsApp, email, Slack, Telegram, Teams, and more, one shared memory</td>
+                <td>Usually one window</td>
+                <td>Whatever you connect yourself</td>
+                <td>Whatever they personally check</td>
+              </tr>
+              <tr>
+                <th scope="row">Governance and audit log</th>
+                <td class="compare-col-aiva">Built into every plan</td>
+                <td>Not typically included</td>
+                <td>Not typically included</td>
+                <td>Manual, only if you build the process</td>
+              </tr>
+              <tr>
+                <th scope="row">Learns your business</th>
+                <td class="compare-col-aiva">Trained on your documents, FAQs, and rules</td>
+                <td>Generic, resets unless you rebuild the prompt</td>
+                <td>No judgment, breaks on the unexpected</td>
+                <td>Yes, but takes weeks to ramp up</td>
+              </tr>
+              <tr>
+                <th scope="row">Outreach engine</th>
+                <td class="compare-col-aiva">Team plan and above (one business line on Team; try simulate-inbound free during trial)</td>
+                <td>Chat replies only, no pipeline or follow-up engine</td>
+                <td>Only if you build every step yourself</td>
+                <td>Yes, but £24,000+/yr before tools and management time</td>
+              </tr>
+              <tr>
+                <th scope="row">Business lines</th>
+                <td class="compare-col-aiva">Team: 1 included; Business: unlimited verticals at once</td>
+                <td>Not applicable</td>
+                <td>One automation scope per workflow you wire</td>
+                <td>One focus per hire unless you add headcount</td>
+              </tr>
+              <tr>
+                <th scope="row">Property deal-sourcing</th>
+                <td class="compare-col-aiva">Business plan (Land Registry, EPC, and company records built in)</td>
+                <td>Not included</td>
+                <td>Not included</td>
+                <td>Requires separate data tools and subscriptions</td>
+              </tr>
+              <tr>
+                <th scope="row">Propreneur workspace + Aiva bridge</th>
+                <td class="compare-col-aiva">Business plan only (connect your own Propreneur account; Aiva reads and updates portfolio, deals, and tenancies through the bridge)</td>
+                <td>Not included</td>
+                <td>Not included</td>
+                <td>Separate property software subscription</td>
+              </tr>
+              <tr>
+                <th scope="row">Cost</th>
+                <td class="compare-col-aiva">From £69/mo for one AI employee</td>
+                <td>Free to ~£20/mo, chat only</td>
+                <td>Per-workflow fees, plus your own build time</td>
+                <td>£24,000+/yr, plus NI, holiday, and sick pay</td>
+              </tr>
+              <tr>
+                <th scope="row">Free trial</th>
+                <td class="compare-col-aiva">30 days, no card required</td>
+                <td>Varies</td>
+                <td>Varies</td>
+                <td>None</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -2621,9 +2998,9 @@
         <h2>Simple pricing</h2>
         <p class="section-lead">Built-in governance monitoring and a full audit log included on every plan.</p>
         <div class="tier-pills">
-          <a href="https://admin.hireaiva.co.uk/register" class="tier-pill"><strong>Starter</strong> 1 AI Employee</a>
-          <a href="https://admin.hireaiva.co.uk/billing" class="tier-pill"><strong>Team</strong> up to 5 Aivas</a>
-          <a href="https://admin.hireaiva.co.uk/billing" class="tier-pill"><strong>Business</strong> unlimited Aivas + custom domain</a>
+          <a href="https://admin.hireaiva.co.uk/signup?plan=starter" class="tier-pill"><strong>Starter</strong> 1 AI Employee</a>
+          <a href="https://admin.hireaiva.co.uk/signup?plan=team" class="tier-pill"><strong>Team</strong> up to 5 Aivas + Outreach</a>
+          <a href="https://admin.hireaiva.co.uk/signup?plan=business" class="tier-pill"><strong>Business</strong> unlimited Aivas + multi-line + custom branding</a>
         </div>
         <div class="plan-row">
           <div class="plan-card">
@@ -2636,7 +3013,7 @@
               <li>Built-in governance monitoring</li>
               <li>Full audit log</li>
             </ul>
-            <a href="https://admin.hireaiva.co.uk/register?plan=starter" class="plan-cta">Start free trial</a>
+            <a href="https://admin.hireaiva.co.uk/signup?plan=starter" class="plan-cta">Start free trial</a>
           </div>
           <div class="plan-card plan-card--team">
             <span class="plan-badge">Most popular</span>
@@ -2648,8 +3025,10 @@
               <li>10,000 messages per month</li>
               <li>5 AI Employees</li>
               <li>Analytics dashboard</li>
+              <li>Outreach engine: find, qualify, and nurture new customers automatically (one business line included)</li>
+              <li>Try Outreach free during your trial, including simulate-inbound on a business line</li>
             </ul>
-            <a href="https://admin.hireaiva.co.uk/register?plan=team" class="plan-cta plan-cta--primary">Start free trial</a>
+            <a href="https://admin.hireaiva.co.uk/signup?plan=team" class="plan-cta plan-cta--primary">Start free trial</a>
           </div>
           <div class="plan-card plan-card--business">
             <h3>Business</h3>
@@ -2658,14 +3037,87 @@
             <ul>
               <li>Everything in Team</li>
               <li>Unlimited messages</li>
+              <li>Run outreach across multiple business lines at once (unlimited lines)</li>
               <li>Custom customer-facing name and domain</li>
               <li>Custom Aiva training (documents and FAQs)</li>
               <li>Custom governance rules and escalation thresholds</li>
+              <li>Property deal-sourcing with live market data: Land Registry, EPC, and company records built in</li>
+              <li>Connect your own Propreneur account (UK property MIS) through the built-in Aiva bridge: portfolio, deals, tenancies, and maintenance data available to your Aiva</li>
             </ul>
-            <a href="https://admin.hireaiva.co.uk/register?plan=business" class="plan-cta plan-cta--enterprise">Get started</a>
+            <a href="https://admin.hireaiva.co.uk/signup?plan=business" class="plan-cta plan-cta--enterprise">Get started</a>
           </div>
         </div>
         <p class="pricing-link-note">All plans include a 30-day free trial. No card required. Optional human escalation is available when you need it. Need governance? Scout is a separate product for Carina deployments and other stacks. &nbsp;|&nbsp; Building your own platform? <a href="https://carinaai.uk/pricing/">Carina platform pricing</a></p>
+      </div>
+    </section>
+
+    <!-- Section 9b: FAQ -->
+    <section class="faq-section section--dark" id="faq">
+      <div class="container">
+        <span class="section-label">Questions</span>
+        <h2 class="section-title-centered">Before you start the trial</h2>
+        <div class="faq-list">
+          <details class="faq-item">
+            <summary>What does Aiva actually do?</summary>
+            <p>It answers customer messages, books appointments, chases follow-ups, and runs recurring routines you define, across whichever channels you connect. You give it a role, context about your business, and boundaries; it carries the work through to done instead of handing you a draft to finish.</p>
+          </details>
+          <details class="faq-item">
+            <summary>How autonomous is it, does it act without me?</summary>
+            <p>Within the scope you set, yes. Outside that scope, no: confidence thresholds pause anything ambiguous and route it to you instead of guessing. You decide how wide the scope is when you set the role up, and can narrow or expand it any time.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What counts as one AI employee?</summary>
+            <p>One configured Aiva: one role, one memory, one set of connected channels. The Starter plan includes one; Team includes up to five, each with its own role and context; Business is unlimited.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Which channels and tools does it connect to?</summary>
+            <p>WhatsApp, email, Slack, Telegram, web chat, Discord, SMS, Microsoft Teams, Google Chat, and more, all sharing one memory. Google Calendar connects directly for real booking and scheduling. See the Channels section above for the full list.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Do I need technical skills to set it up?</summary>
+            <p>No. Registration, workspace setup, and channel connection are guided steps in the workspace itself, not a developer integration. Most people are live on their first channel within minutes of signing up.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What happens when something is outside its scope?</summary>
+            <p>It pauses and routes the message to you (or your team) in the same channel, rather than guessing or making something up. You can also arrange optional human escalation for judgment-heavy cases.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Is the governance and audit log optional?</summary>
+            <p>No, it is built into every plan at no extra cost. Every message, tool call, and automation run passes through governance monitoring, and every action is logged with a cryptographic content hash you can produce on request.</p>
+          </details>
+          <details class="faq-item">
+            <summary>How does the 30-day free trial work?</summary>
+            <p>No card required to start. You get full access to your chosen tier for 30 days, so you can run real conversations and automations on your own account before deciding to pay.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Can I change plans or cancel any time?</summary>
+            <p>Yes. Upgrade, downgrade, or cancel from the workspace whenever you need to; see the <a href="/cancellation-policy/">cancellation policy</a> for the specifics.</p>
+          </details>
+          <details class="faq-item">
+            <summary>How is my data handled?</summary>
+            <p>Current practice is documented on the <a href="https://hireaiva.co.uk/security/">security page</a>, which we keep to facts that match the live product rather than unreviewed claims. If you have a specific security questionnaire, that page tells you what to ask for and where to send it.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What is a business line?</summary>
+            <p>A business line is a configured outreach vertical: pipeline stages, reply intents, qualification fields, and channel bindings for one kind of work (for example property deal sourcing or finance outreach). Team includes one line; Business includes unlimited lines.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What does Outreach include on Team?</summary>
+            <p>The Outreach engine covers CRM leads, pipeline stages, sequences, campaigns, approvals, and business-line packs. Team includes one business line. You can try simulate-inbound on a line during your free trial before you upgrade.</p>
+          </details>
+          <details class="faq-item">
+            <summary>How does Property work on Business?</summary>
+            <p>Business unlocks the Property workspace: UK due diligence (Land Registry, EPC, Companies House), 28 native investment calculators with step-by-step working, saved searches, discovery signals, and floor-plan-to-BOQ refurb estimates. It is built for investors and deal sourcers, not just lettings enquiries.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What is included with Propreneur on Business?</summary>
+            <p>Business plans unlock the Aiva bridge to Propreneur, our UK property MIS - connect your own Propreneur account (a separate subscription) and your Aiva can read and update portfolio, deals, tenancies, contacts, and maintenance records in Propreneur while you stay in Aiva. Starter and Team do not include bridge access.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What is the difference between Aiva and Labyrinth Scout?</summary>
+            <p>Aiva is the AI employee itself, built-in governance included. Scout is a separate, deeper governance layer for teams running their own Carina deployments or other agent stacks who need policy templates, a kill switch, and compliance reporting across more than one product.</p>
+          </details>
+        </div>
       </div>
     </section>
 
@@ -2673,9 +3125,9 @@
     <section class="final-cta section--dark">
       <div class="final-cta-inner">
         <h2>Your first Aiva is free for 30 days.</h2>
-        <p>No card required. Cancel any time. Watch the live demos, then run the same flows on your own account.</p>
+        <p>No card required. Cancel any time. Watch the live demos - including Outreach and Property - then run the same flows on your own account.</p>
         <div class="cta-row">
-          <a href="https://admin.hireaiva.co.uk/register" class="btn btn-primary">Start free</a>
+          <a href="https://admin.hireaiva.co.uk/signup" class="btn btn-primary">Start free</a>
           <a href="/demo/" class="btn btn-ghost">Watch live demos</a>
         </div>
         <a href="mailto:contact@verlox.uk" class="talk-link">Talk to us first -&gt;</a>
@@ -2692,29 +3144,32 @@
   <footer class="site-footer">
     <div class="footer-inner">
       <a href="https://hireaiva.co.uk/" class="nav-logo">Aiva<span class="dot">.</span></a>
-      <div class="footer-links" aria-label="Aiva product">
-        <a href="https://github.com/malike2356/keprix">Keprix</a>
-        <a href="https://propreneur.uk/">Propreneur</a>
-        <a href="https://tuinapp.uk/">TuinApp</a>
-        <a href="https://propcalc.uk/">PropCalc</a>
-        <a href="https://carinaai.uk/">Carina</a>
-        <a href="https://hireaiva.co.uk/">Aiva</a>
-        <a href="https://labyrinthscout.com/">Scout</a>
+      <nav class="footer-nav" aria-label="Aiva product">
         <a href="https://hireaiva.co.uk/demo/">Live demos</a>
         <a href="https://hireaiva.co.uk/#how-it-works">How it works</a>
         <a href="https://hireaiva.co.uk/#pricing">Pricing</a>
+        <a href="https://hireaiva.co.uk/#faq">FAQ</a>
         <a href="https://hireaiva.co.uk/security/">Security</a>
         <a href="/support/">Support</a>
         <a href="/book-demo/">Book a demo</a>
-        <a href="https://admin.hireaiva.co.uk/register">Start free</a>
-      </div>
+        <a href="https://admin.hireaiva.co.uk/signup">Start free</a>
+      </nav>
+      <p class="footer-ecosystem">
+        <span class="footer-ecosystem-label">VERLOX ecosystem</span>
+        <a href="https://github.com/malike2356/keprix">Keprix</a><span class="footer-ecosystem-sep">·</span>
+        <a href="https://propreneur.uk/">Propreneur</a><span class="footer-ecosystem-sep">·</span>
+        <a href="https://tuinapp.uk/">TuinApp</a><span class="footer-ecosystem-sep">·</span>
+        <a href="https://propcalc.uk/">PropCalc</a><span class="footer-ecosystem-sep">·</span>
+        <a href="https://carinaai.uk/">Carina</a><span class="footer-ecosystem-sep">·</span>
+        <a href="https://labyrinthscout.com/">Scout</a>
+      </p>
       <div class="footer-legal" aria-label="Legal">
+        <a href="https://hireaiva.co.uk/privacy/">Privacy</a>
+        <a href="https://hireaiva.co.uk/terms/">Terms</a>
+        <a href="https://hireaiva.co.uk/data-processing-agreement/">DPA</a>
+        <a href="/refund-policy/">Refund</a>
+        <a href="/cancellation-policy/">Cancellation</a>
         <a href="/support/">Support policy</a>
-        <a href="https://hireaiva.co.uk/security/">Security</a>
-        <a href="/refund-policy/">Refund policy</a>
-        <a href="/cancellation-policy/">Cancellation policy</a>
-        <a href="https://admin.hireaiva.co.uk/legal/privacy">Privacy Policy</a>
-        <a href="https://admin.hireaiva.co.uk/legal/terms">Terms</a>
       </div>
       <p class="footer-platform">
         Aiva is a standalone AI employee product.
@@ -2724,33 +3179,9 @@
       <p class="footer-copy">&copy; 2026 <a href="https://verlox.uk">VERLOX Ltd</a></p>
     </div>
   </footer>
-  <!-- 8-second test widget -->
-  <div class="eight-test" id="eight-test" role="complementary" aria-label="8-second clarity test">
-    <div class="et-header">
-      <span class="et-title">8-second test</span>
-      <span class="et-timer" id="et-timer">8</span>
-      <button class="et-close" id="et-close" aria-label="Dismiss" type="button">&#x2715;</button>
-    </div>
-    <div class="et-bar-track"><div class="et-bar-fill" id="et-bar"></div></div>
-    <div class="et-body">
-      <div class="et-question" id="etq-0">
-        <span class="et-check" id="etc-0"></span>
-        What problem does Aiva solve?
-      </div>
-      <div class="et-question" id="etq-1">
-        <span class="et-check" id="etc-1"></span>
-        How does it solve it?
-      </div>
-      <div class="et-question" id="etq-2">
-        <span class="et-check" id="etc-2"></span>
-        How do I get started?
-      </div>
-      <p class="et-result" id="et-result">Cleared in under 8 seconds. Message is sharp.</p>
-    </div>
-  </div>
 
   <script src="/assets/js/site-nav.js"></script>
-  <script src="/assets/js/live-demos.js?v=20260802d"></script>
+  <script src="/assets/js/live-demos.js?v=20260823a"></script>
   <script>
   (function(){
     var body=document.getElementById('hero-chat-body');
@@ -2830,68 +3261,6 @@
   })();
   </script>
   <script>
-  (function(){
-    var widget=document.getElementById('eight-test');
-    var timerEl=document.getElementById('et-timer');
-    var barEl=document.getElementById('et-bar');
-    var closeBtn=document.getElementById('et-close');
-    var resultEl=document.getElementById('et-result');
-    if(!widget||!timerEl||!barEl)return;
-
-    var DURATION=8000;
-    var TICK=80;
-    var CHECK_AT=[2500,5000,7000];
-    var checks=[
-      {q:document.getElementById('etq-0'),c:document.getElementById('etc-0')},
-      {q:document.getElementById('etq-1'),c:document.getElementById('etc-1')},
-      {q:document.getElementById('etq-2'),c:document.getElementById('etc-2')}
-    ];
-    var elapsed=0;
-    var interval=null;
-    var dismissed=false;
-
-    function dismiss(){
-      if(dismissed)return;
-      dismissed=true;
-      clearInterval(interval);
-      widget.classList.add('et-out');
-    }
-
-    function complete(){
-      clearInterval(interval);
-      timerEl.textContent='0';
-      barEl.style.width='100%';
-      widget.classList.add('et-done');
-      if(resultEl){resultEl.classList.add('et-result-visible');}
-      window.setTimeout(function(){if(!dismissed)dismiss();},3000);
-    }
-
-    function tick(){
-      elapsed+=TICK;
-      var pct=Math.min(elapsed/DURATION,1);
-      barEl.style.width=(pct*100)+'%';
-      var remaining=Math.max(0,Math.ceil((DURATION-elapsed)/1000));
-      timerEl.textContent=remaining;
-
-      CHECK_AT.forEach(function(at,i){
-        if(elapsed>=at&&checks[i].c&&!checks[i].c.classList.contains('et-checked')){
-          checks[i].c.classList.add('et-checked');
-          if(checks[i].q)checks[i].q.classList.add('et-q-checked');
-        }
-      });
-
-      if(elapsed>=DURATION)complete();
-    }
-
-    function start(){
-      if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-      widget.classList.add('et-visible');
-      interval=window.setInterval(tick,TICK);
-    }
-
-    if(closeBtn)closeBtn.addEventListener('click',dismiss);
-    window.setTimeout(start,1800);
-  })();
   (function(){
     fetch('https://core.carinaai.uk/api/public/pricing',{cache:'no-store'})
       .then(function(r){return r.json();})

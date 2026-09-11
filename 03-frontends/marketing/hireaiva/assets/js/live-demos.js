@@ -67,6 +67,24 @@
       { step: 1, label: 'Carina is researching', beat: 1, hold: 2600 },
       { step: 2, label: 'Review cited sources', beat: 2, hold: 2600 },
       { step: 3, label: 'Save to Documents', beat: 3, hold: 2400 }
+    ],
+    businesslines: [
+      { step: 0, label: 'Import your business line', beat: 0, hold: 2200 },
+      { step: 1, label: 'Simulate an inbound message', beat: 1, hold: 2400 },
+      { step: 2, label: 'See pipeline stage counts', beat: 2, hold: 2400 },
+      { step: 3, label: 'Ready for live channels', beat: 3, hold: 2600 }
+    ],
+    outreach: [
+      { step: 0, label: 'New lead in CRM', beat: 0, hold: 2200 },
+      { step: 1, label: 'Qualification fields captured', beat: 1, hold: 2400 },
+      { step: 2, label: 'Draft follow-up for approval', beat: 2, hold: 2600 },
+      { step: 3, label: 'Pipeline stage updated', beat: 3, hold: 2400 }
+    ],
+    property: [
+      { step: 0, label: 'Run due diligence', beat: 0, hold: 2200 },
+      { step: 1, label: 'Review Land Registry and EPC', beat: 1, hold: 2600 },
+      { step: 2, label: 'Run BTL calculator', beat: 2, hold: 2600 },
+      { step: 3, label: 'Save to your workspace', beat: 3, hold: 2400 }
     ]
   };
 
@@ -84,6 +102,9 @@
     docs: 'live-documents',
     contacts: 'live-contacts',
     research: 'live-research',
+    businesslines: 'live-businesslines',
+    outreach: 'live-outreach',
+    property: 'live-property',
     'live-register': 'live-register',
     'live-workspace': 'live-workspace',
     'live-automation': 'live-automation',
@@ -93,7 +114,10 @@
     'live-notes': 'live-notes',
     'live-documents': 'live-documents',
     'live-contacts': 'live-contacts',
-    'live-research': 'live-research'
+    'live-research': 'live-research',
+    'live-businesslines': 'live-businesslines',
+    'live-outreach': 'live-outreach',
+    'live-property': 'live-property'
   };
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
