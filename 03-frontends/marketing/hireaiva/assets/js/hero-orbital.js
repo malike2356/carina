@@ -1,5 +1,5 @@
 /**
- * Carina hero orbital timeline.
+ * Aiva hero orbital timeline.
  * Persistent DOM nodes + transform updates (no innerHTML thrash on rotate).
  */
 (function initHeroOrbital() {
@@ -13,7 +13,7 @@
       id: 1,
       title: 'Memory',
       date: 'Always on',
-      content: 'Persistent context across sessions. Carina remembers projects, preferences, and prior decisions so you never re-explain yourself.',
+      content: 'Persistent context across sessions. Aiva remembers projects, preferences, and prior decisions so you never re-explain yourself.',
       icon: 'ti-brain',
       relatedIds: [2, 3],
       status: 'completed',

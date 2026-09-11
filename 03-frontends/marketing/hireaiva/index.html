@@ -3047,7 +3047,7 @@
             <a href="https://admin.hireaiva.co.uk/signup?plan=business" class="plan-cta plan-cta--enterprise">Get started</a>
           </div>
         </div>
-        <p class="pricing-link-note">All plans include a 30-day free trial. No card required. Optional human escalation is available when you need it. Need governance? Scout is a separate product for Carina deployments and other stacks. &nbsp;|&nbsp; Building your own platform? <a href="https://carinaai.uk/pricing/">Carina platform pricing</a></p>
+        <p class="pricing-link-note">All plans include a 30-day free trial. No card required. Optional human escalation is available when you need it. Need governance for AI agents at scale? See <a href="https://labyrinthscout.com/">Scout</a>, VERLOX's separate governance product.</p>
       </div>
     </section>
 
@@ -3115,7 +3115,7 @@
           </details>
           <details class="faq-item">
             <summary>What is the difference between Aiva and Labyrinth Scout?</summary>
-            <p>Aiva is the AI employee itself, built-in governance included. Scout is a separate, deeper governance layer for teams running their own Carina deployments or other agent stacks who need policy templates, a kill switch, and compliance reporting across more than one product.</p>
+            <p>Aiva is the AI employee itself, built-in governance included. Scout is a separate, deeper governance product for teams running AI agents at scale who need policy templates, a kill switch, and compliance reporting across more than one system. Aiva and Scout are independent products from VERLOX; you don't need Scout to use Aiva.</p>
           </details>
         </div>
       </div>
@@ -3132,9 +3132,7 @@
         </div>
         <a href="mailto:contact@verlox.uk" class="talk-link">Talk to us first -&gt;</a>
         <div class="brand-attribution">
-          <img src="/assets/badges/powered-by-carina.svg" alt="Powered by Aiva" height="20">
-          <span class="brand-sep">·</span>
-          <span class="brand-text">Standalone product</span>
+          <span class="brand-text">A standalone product from VERLOX</span>
         </div>
       </div>
     </section>
@@ -3160,7 +3158,6 @@
         <a href="https://propreneur.uk/">Propreneur</a><span class="footer-ecosystem-sep">·</span>
         <a href="https://tuinapp.uk/">TuinApp</a><span class="footer-ecosystem-sep">·</span>
         <a href="https://propcalc.uk/">PropCalc</a><span class="footer-ecosystem-sep">·</span>
-        <a href="https://carinaai.uk/">Carina</a><span class="footer-ecosystem-sep">·</span>
         <a href="https://labyrinthscout.com/">Scout</a>
       </p>
       <div class="footer-legal" aria-label="Legal">
@@ -3174,7 +3171,6 @@
       <p class="footer-platform">
         Aiva is a standalone AI employee product.
         Optional human escalation is available when you need it.
-        For platform builders, visit <a href="https://carinaai.uk/">carinaai.uk</a>.
       </p>
       <p class="footer-copy">&copy; 2026 <a href="https://verlox.uk">VERLOX Ltd</a></p>
     </div>
@@ -3260,20 +3256,8 @@
     window.setTimeout(function(){runSequence(0);},700);
   })();
   </script>
-  <script>
-  (function(){
-    fetch('https://core.carinaai.uk/api/public/pricing',{cache:'no-store'})
-      .then(function(r){return r.json();})
-      .then(function(d){
-        var sym=d.symbol||'£';
-        var prices=d.prices||{};
-        document.querySelectorAll('[data-price-key]').forEach(function(el){
-          var key=el.getAttribute('data-price-key');
-          if(key&&prices[key]!=null){el.textContent=sym+prices[key];}
-        });
-      })
-      .catch(function(){});
-  })();
-  </script>
+  <!-- Prices are static per-page content (see data-price-key elements above),
+       sourced from VERLOX's own Stripe price records. Aiva is standalone and
+       no longer fetches pricing from Carina's backend at core.carinaai.uk. -->
 </body>
 </html>

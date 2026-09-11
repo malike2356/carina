@@ -64,7 +64,7 @@
     ],
     research: [
       { step: 0, label: 'Start a research paper', beat: 0, hold: 2200 },
-      { step: 1, label: 'Carina is researching', beat: 1, hold: 2600 },
+      { step: 1, label: 'Aiva is researching', beat: 1, hold: 2600 },
       { step: 2, label: 'Review cited sources', beat: 2, hold: 2600 },
       { step: 3, label: 'Save to Documents', beat: 3, hold: 2400 }
     ],

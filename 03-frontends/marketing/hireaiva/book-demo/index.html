@@ -201,7 +201,6 @@
     <div class="footer-inner">
       <a href="https://hireaiva.co.uk/" class="nav-logo">Aiva<span class="dot">.</span></a>
       <div class="footer-links">
-        <a href="https://carinaai.uk/">Carina</a>
         <a href="https://hireaiva.co.uk/">Aiva</a>
         <a href="https://labyrinthscout.com/">Scout</a>
         <a href="/#pricing">Pricing</a>
@@ -249,7 +248,7 @@
 
       submit.disabled = true;
       try {
-        var res = await fetch('https://carinaai.uk/api/book-demo', {
+        var res = await fetch('https://admin.hireaiva.co.uk/api/aiva/public/book-demo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify(payload)
