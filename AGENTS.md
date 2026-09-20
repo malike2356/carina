@@ -1,5 +1,8 @@
 # Repository Guidelines
 
+## HOLD (2026-09-20)
+
+Carina is on hold until further notice. Do not start or continue work in this repo unless the owner lifts the hold. See `HOLD.md`. Live sites stay as they are.
 
 ## CRITICAL: Public GitHub hygiene (product files only)
 
