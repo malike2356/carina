@@ -12,7 +12,7 @@ flowchart TB
   kernel["Carina Kernel - MIT free"]
   packs["Domain Packs - free"]
   products["Products - built on Carina"]
-  scout["Scout - commercial"]
+  scout["Scout - dormant, not offered"]
   kernel --> packs
   kernel --> products
   kernel --> scout
@@ -47,13 +47,14 @@ Vertical applications and hosted offerings that run on the same kernel:
 - **COMPASS** - NHS compliance copilot (Powered by Carina; pilot)
 - **Carina Ops** - Hosted multi-tenant SaaS (commercial)
 
-Products say "powered by Carina" or "built on Carina." They can optionally integrate the separate Scout product for production security.
+Products say "powered by Carina" or "built on Carina."
 
-## Scout (commercial)
+## Scout (retired, not offered)
 
-The security layer: prompt injection shield, audit logging, kill switch, trust verification, and compliance exports. Optional. Carina runs without Scout when `LABYRINTH_ENABLED=false`, and Scout also operates independently of Carina.
-
-Scout is never bundled with the MIT core. See [Commercial boundaries](/docs/user/pricing) and [Labyrinth Scout](/docs/user/security/labyrinth-scout).
+A security layer design - prompt injection shield, audit logging, kill switch, trust verification,
+compliance exports - that was never deployed as a live product and is now a personal research
+project, not something products can integrate with. Carina runs without it (`LABYRINTH_ENABLED=false`
+or unset). See [Labyrinth Scout](/docs/user/security/labyrinth-scout).
 
 ## Further reading
 

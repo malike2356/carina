@@ -1,1 +1,0 @@
-# SHA256 known-bad hashes (one per line)

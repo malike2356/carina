@@ -10,15 +10,15 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 SITES = [
     REPO / "shared/marketing-sites/carinaai.uk",
-    REPO / "03-frontends/marketing/labyrinthscout.com",
     REPO / "03-frontends/marketing/hireaiva",
 ]
 
+# Scout (labyrinthscout.com) removed 2026-10-22: re-scoped from a commercial product to a
+# personal research project, no longer part of the cross-promoted ecosystem.
 LINKS = (
     ("github.com/malike2356/keprix", '        <a href="https://github.com/malike2356/keprix">Keprix</a>\n'),
     ("carinaai.uk", '        <a href="https://carinaai.uk/">Carina</a>\n'),
     ("hireaiva.co.uk", '        <a href="https://hireaiva.co.uk/">Aiva</a>\n'),
-    ("labyrinthscout.com", '        <a href="https://labyrinthscout.com/">Scout</a>\n'),
     ("propreneur.uk", '        <a href="https://propreneur.uk/">Propreneur</a>\n'),
     ("tuinapp.uk", '        <a href="https://tuinapp.uk/">TuinApp</a>\n'),
     ("propcalc.uk", '        <a href="https://propcalc.uk/">PropCalc</a>\n'),

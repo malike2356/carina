@@ -1,4 +1,0 @@
-# Known malicious domains (extend via feed_sync)
-evil.example
-c2.malicious.test
-pool.miner.invalid

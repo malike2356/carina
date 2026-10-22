@@ -1,4 +1,0 @@
-# Known C2 / mining pool example IPs (extend via feed_sync)
-# RFC5737 documentation range placeholders for tests
-203.0.113.66
-198.51.100.66

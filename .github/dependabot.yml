@@ -64,16 +64,6 @@ updates:
       - dependencies
       - security
 
-  - package-ecosystem: npm
-    directory: /verlox/carina/02-backends/scout-engine
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 3
-    labels:
-      - dependencies
-      - security
-
   - package-ecosystem: github-actions
     directory: /
     schedule:

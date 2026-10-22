@@ -12,7 +12,6 @@ Carina provides a general-purpose agent runtime with:
 - Aiva workers for business operations
 - Memory, knowledge ingestion, and workspace profiles
 - Email, Telegram, Slack, WhatsApp, and web channels
-- Labyrinth Scout security monitoring and governance
 - Self-hosted and Carina Cloud deployment options
 
 Capability availability depends on the selected plan, deployment mode, enabled

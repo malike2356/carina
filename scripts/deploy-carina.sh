@@ -22,8 +22,6 @@ CORE_LOCAL="${PLATFORM_ROOT}/02-backends/core.carinaai.uk"
 OPS_LOCAL="${PLATFORM_ROOT}/02-backends/admin/ops.carinaai.uk"
 CLOUD_LOCAL="${PLATFORM_ROOT}/03-frontends/client-apps/app.carinaai.uk"
 ADMIN_LOCAL="${PLATFORM_ROOT}/03-frontends/client-apps/admin.carinaai.uk"
-SCOUT_CONSOLE_LOCAL="${PLATFORM_ROOT}/02-backends/console.labyrinthscout.com"
-SCOUT_ENGINE_LOCAL="${PLATFORM_ROOT}/02-backends/scout-engine"
 MARKETING_ROOT="${WORKSPACE_ROOT}/shared/marketing-sites"
 CARINA_MARKETING_LOCAL="${MARKETING_ROOT}/carinaai.uk"
 DOCS_SUBDOMAIN_LOCAL="${PLATFORM_ROOT}/03-frontends/marketing/docs.carinaai.uk"
@@ -64,8 +62,6 @@ assert_tracked_source "${CORE_LOCAL}" "Carina core"
 assert_tracked_source "${OPS_LOCAL}" "Carina ops"
 assert_tracked_source "${CLOUD_LOCAL}" "Carina cloud"
 assert_tracked_source "${ADMIN_LOCAL}" "Carina admin"
-assert_tracked_source "${SCOUT_CONSOLE_LOCAL}" "Scout console"
-assert_tracked_source "${SCOUT_ENGINE_LOCAL}" "Scout engine"
 assert_tracked_source "${CARINA_MARKETING_LOCAL}" "Carina marketing"
 assert_tracked_source "${DOCS_SUBDOMAIN_LOCAL}" "Carina documentation"
 assert_tracked_source "${SCOUT_MARKETING_LOCAL}" "Scout marketing"
@@ -103,16 +99,6 @@ bash "${CLOUD_LOCAL}/deploy.sh"
 
 log "Deploying admin.carinaai.uk..."
 bash "${ADMIN_LOCAL}/deploy.sh"
-
-log "Syncing console.labyrinthscout.com (Docker build context)..."
-rsync -az --delete \
-  --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
-  "${SCOUT_CONSOLE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/console.labyrinthscout.com/"
-
-log "Syncing scout-engine (Docker build context)..."
-rsync -az --delete \
-  --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
-  "${SCOUT_ENGINE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/scout-engine/"
 
 log "Syncing carinaai.uk marketing site..."
 ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/core.carinaai.uk/public_website'"
@@ -212,16 +198,7 @@ bash docker/scripts/stop-bare-metal-carina.sh
 bash docker/scripts/deploy-prod.sh
 bash docker/scripts/reload-marketing-nginx.sh
 bash docker/scripts/check-carina-marketing.sh
-
-# Scout stack
-cd "$APPS_ROOT/console.labyrinthscout.com"
-export SCOUT_ENGINE_CONTEXT="$APPS_ROOT/scout-engine"
-# Copy .env from secrets dir if not already present; never overwrite an existing one.
-test -f .env || cp "$SECRETS_DIR/scout.env" .env 2>/dev/null || true
-docker compose -f docker-compose.prod.yml pull --ignore-pull-failures 2>/dev/null || true
-docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
 REMOTE
 
 log "Deploy complete."
 log "Verify Carina: curl -fsS https://core.carinaai.uk/health"
-log "Verify Scout:  curl -fsS https://console.labyrinthscout.com/api/health"
