@@ -52,7 +52,7 @@ Legacy VitePress docs under `core.carinaai.uk/docs/` are deprecated; canonical d
 | `03-frontends/marketing/` | Marketing sites (`carinaai.uk/`, `labyrinthscout.com/`, docs) |
 | `03-frontends/sdks/` | Public SDKs |
 
-Deploy scripts live at `carina/scripts/` (`deploy-carina.sh`, `deploy-marketing.sh`, `deploy-scout.sh`).
+Deploy scripts live at `carina/scripts/` (`deploy-carina.sh`, `deploy-marketing.sh`).
 
 ## Active projects (2026-06-25)
 
