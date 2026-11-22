@@ -1,9 +1,0 @@
-{
-  "name": "Hire Aiva",
-  "short_name": "Aiva",
-  "display": "browser",
-  "start_url": "/",
-  "scope": "/",
-  "theme_color": "#061019",
-  "background_color": "#061019"
-}

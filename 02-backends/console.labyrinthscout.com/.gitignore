@@ -1,6 +1,0 @@
-node_modules/
-dist/
-public/docs/
-.env
-connectors.live.json
-*.log

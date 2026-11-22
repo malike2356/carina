@@ -28,7 +28,6 @@ import { controlCenterRouter } from './routes/control-center.js';
 import { mcpRouter } from './routes/mcp.js';
 import { tuiRouter } from './routes/tui.js';
 import { incidentBlogRouter } from './routes/incident-blog.js';
-import { scoutApiProxyRouter, scoutDashboardRouter } from './routes/scout-dashboard.js';
 import { carinaToolsProxyRouter } from './routes/carina-tools-proxy.js';
 import { governanceRouter } from './routes/governance.js';
 import { mutationRouter } from './routes/mutation.js';
@@ -220,9 +219,6 @@ app.use('/mutation', mutationRouter);
 app.use('/users', usersRouter);
 app.use('/server', serverPanelRouter);
 
-app.use('/dashboard', requireAdmin, scoutDashboardRouter);
-app.use('/scout-api', requireAdmin, scoutApiProxyRouter);
-app.use('/scout', requireAdmin, scoutDashboardRouter);
 app.use('/business-inner', requireAdmin, ensureBusinessAdminSession, businessAdminProxyRouter);
 app.use('/api/admin', requireAdmin, ensureBusinessAdminSession, businessAdminApiProxyRouter);
 app.use('/business', requireAdmin, ensureBusinessAdminSession, businessAdminShellRouter);
@@ -230,7 +226,7 @@ app.use('/api/carina-ops/tools', requireAdmin, carinaToolsProxyRouter);
 
 app.use((req, res) => {
   const path = (req.originalUrl ?? req.url ?? '').split('?')[0] ?? '';
-  if (path.startsWith('/scout-api') || path.startsWith('/api/')) {
+  if (path.startsWith('/api/')) {
     res.status(404).json({ error: 'Not found' });
     return;
   }

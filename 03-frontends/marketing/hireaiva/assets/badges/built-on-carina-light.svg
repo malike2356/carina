@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="240" height="48" viewBox="0 0 240 48" role="img" aria-label="Built on Carina">
-  <rect width="240" height="48" rx="6" fill="#ffffff" stroke="#f5a623" stroke-width="1.5"/>
-  <rect x="14" y="14" width="20" height="20" rx="4" fill="none" stroke="#1a5f7a" stroke-width="2"/>
-  <path d="M19 24h10M24 19v10" stroke="#1a5f7a" stroke-width="2" stroke-linecap="round"/>
-  <text x="44" y="21" fill="#09161e" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Built on Carina</text>
-  <text x="44" y="34" fill="#195a78" font-family="system-ui, sans-serif" font-size="9">carinaai.uk</text>
-</svg>

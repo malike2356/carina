@@ -19,7 +19,7 @@ import {
   clearIncognitoBuffer,
   getIncognitoHistory,
   isIncognitoSessionMarked,
-} from './aiva/incognito-buffer.js';
+} from './incognito-buffer.js';
 
 export type { EpisodicSearchScope };
 

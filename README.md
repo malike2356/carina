@@ -1,4 +1,13 @@
+# Carina
 
+VERLOX Carina platform monorepo (agent core, ops panel, keys server, client apps, docs).
+
+- GitHub: `https://github.com/malike2356/carina` (renamed from `carina-ai`, 2026-11-22)
+- Marketing site (separate repo): `https://github.com/malike2356/carinaai.uk`
+- Aiva is **not** in this tree (Hermes / `malike2356/aiva`)
+- Scout is **not** in this tree (`malike2356/scout`)
+
+Product development is on HOLD (see `HOLD.md`). Read `AGENTS.md` before changing anything.
 
 ## 7 Pillars of Engineering
 
