@@ -2,9 +2,10 @@
 
 Carina is a self-hosted AI agent platform: tools, memory, model routing, channels, and a CLI, with ops and client apps in one monorepo.
 
-Site: [carinaai.uk](https://carinaai.uk)
+- Site: [carinaai.uk](https://carinaai.uk)
+- License: [MIT](LICENSE)
 
-## What is in this repo
+## Repository layout
 
 | Path | Purpose |
 | --- | --- |
@@ -25,18 +26,19 @@ pnpm install
 pnpm carina
 ```
 
-Or use the published CLI:
+Published CLI:
 
 ```bash
 npm install -g carina-agent
 carina
 ```
 
-Package docs and deeper setup: `02-backends/core.carinaai.uk/README.md` and `docs/`.
+More detail: `02-backends/core.carinaai.uk/README.md` and `docs/`.
 
-## Working in this tree
+## Contributing
 
-Read `AGENTS.md` before changing code. Product development is currently paused; see `HOLD.md`.
+See `02-backends/core.carinaai.uk/CONTRIBUTING.md` and `02-backends/core.carinaai.uk/SECURITY.md`.
+Agent and maintainer notes for this monorepo: `AGENTS.md`.
 
 ## Contact
 
