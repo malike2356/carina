@@ -40,6 +40,8 @@ PATTERNS=(
   'redis://[^ "'"'"']*:[^ "'"'"']*@[^ "'"'"']+|Redis connection URL with credentials'
   '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|Private key block'
   'resend_[a-zA-Z0-9]{20,}|Resend API key'
+  'npm_[a-zA-Z0-9]{30,}|npm access token'
+  '_authToken=[a-zA-Z0-9_-]{20,}|.npmrc-style auth token assignment'
 )
 
 # Directories and file suffixes that are never meaningful to scan (build
