@@ -183,3 +183,4 @@ docker/**/*.env
 **/auth.json
 **/kubeconfig
 **/kubeconfig.*
+**/.npmrc.publish
