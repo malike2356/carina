@@ -35,7 +35,7 @@ jobs:
         shell: powershell
 
       - name: Attach installer to GitHub Release
-        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631  # v2.2.2
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3  # v3.0.4
         with:
           files: internal/servers/core.carinaai.uk/installer/carina-setup-${{ steps.version.outputs.version }}.exe
           fail_on_unmatched_files: true
